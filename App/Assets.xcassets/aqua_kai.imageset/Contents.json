@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "aqua_kai.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

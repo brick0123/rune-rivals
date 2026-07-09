@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "solar_leo.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

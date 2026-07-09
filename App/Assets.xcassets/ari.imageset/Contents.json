@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "ari.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

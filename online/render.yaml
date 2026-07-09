@@ -1,0 +1,18 @@
+# Render.com 무료 배포 블루프린트 (룬 라이벌즈 릴레이).
+# 사용: Render 대시보드 → New → Blueprint → 이 레포(online/ 포함) 연결 → Apply
+#   또는 New → Web Service → Root Directory=online, 아래 설정 수동 입력.
+# 배포 후 공개 주소가 https://<name>.onrender.com 형태로 나오며,
+# iOS 앱에는 wss://<name>.onrender.com 를 서버 주소로 넣으면 됩니다.
+services:
+  - type: web
+    name: rune-rivals-relay
+    runtime: node
+    plan: free
+    rootDir: online
+    buildCommand: npm ci --omit=dev
+    startCommand: node relay.mjs
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

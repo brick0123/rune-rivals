@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "milo.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

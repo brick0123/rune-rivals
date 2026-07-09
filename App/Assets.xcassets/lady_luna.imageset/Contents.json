@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "lady_luna.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

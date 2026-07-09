@@ -1,0 +1,221 @@
+// 엔진 상태를 SwiftUI 에 노출하는 뷰모델.
+// 규칙 변경은 전부 엔진 함수를 통한다(여기선 입력 수집·턴 진행·AI 구동만).
+
+import SwiftUI
+import RuneRivalsEngine
+
+enum GameMode: String, CaseIterable, Identifiable {
+    case single = "싱글"
+    case online = "온라인"
+    var id: String { rawValue }
+    /// 온라인(네트워크 대전)은 준비 중 — 아직 시작 불가.
+    var isAvailable: Bool { self == .single }
+}
+
+/// 현재 턴의 단계.
+enum TurnPhase: Equatable {
+    case main         // 메인 액션 대기(사람)
+    case evolve       // 메인 액션 후 진화 선택(사람)
+    case aiThinking   // AI 차례
+    case gameOver
+}
+
+@MainActor
+@Observable
+final class GameViewModel {
+    private(set) var state: GameState
+    let mode: GameMode
+    let playerNames: [String]
+
+    private(set) var phase: TurnPhase = .main
+    /// take3 용 선택 컬러(최대 3, 서로 다름).
+    var selectedColors: [Color] = []
+    /// 마지막 로그 메시지(간단 피드백).
+    private(set) var lastMessage: String = ""
+    /// 진화 후보(evolve 단계).
+    private(set) var pendingEvolutions: [Evolution] = []
+
+    private let aiRng: Rng
+
+    init(mode: GameMode, numPlayers: Int, seed: UInt32) {
+        self.mode = mode
+        // 싱글: P0 만 사람, 나머지 AI.
+        self.state = createGame(seed: seed, numPlayers: numPlayers, humanIndex: 0)
+        self.aiRng = Rng(seed: seed &+ 12321)
+        self.playerNames = (0..<numPlayers).map { i in i == 0 ? "나" : "AI \(i)" }
+        resolvePhaseForCurrent()
+    }
+
+    // MARK: - 조회
+
+    var currentPlayer: PlayerState { state.players[state.currentPlayer] }
+    var isHumanTurn: Bool {
+        if state.ended { return false }
+        return state.currentPlayer == 0
+    }
+    var winner: Int? { state.ended ? winnerId(state) : nil }
+    var ranking: [Int] { rankPlayers(state) }
+
+    func points(_ playerIdx: Int) -> Int { playerPoints(state.players[playerIdx]) }
+
+    /// 보드 특정 tier 슬롯 카드 id.
+    func boardSlots(_ tier: Tier) -> [String] { state.board[tier] ?? [] }
+    func deckCount(_ tier: Tier) -> Int { (state.decks[tier] ?? []).count }
+
+    /// 현재 사람 플레이어가 이 카드를 획득 가능한가.
+    func canAcquire(_ cardId: String) -> Bool {
+        guard isHumanTurn, phase == .main else { return false }
+        return canApplyMainAction(state, .acquire(cardId: cardId, pay: computePay(currentPlayer, cardOf(cardId)) ?? [:]))
+    }
+    func canReserveCard(_ cardId: String) -> Bool {
+        guard isHumanTurn, phase == .main else { return false }
+        return canApplyMainAction(state, .reserve(cardId: cardId))
+    }
+    func canReserveBlind(_ tier: Int) -> Bool {
+        guard isHumanTurn, phase == .main else { return false }
+        return canApplyMainAction(state, .reserveBlind(tier: tier))
+    }
+    func supplyCount(_ c: BallColor) -> Int { state.supply[c] ?? 0 }
+
+    // MARK: - 구슬 집기
+
+    func toggleColor(_ c: Color) {
+        guard isHumanTurn, phase == .main else { return }
+        if let idx = selectedColors.firstIndex(of: c) {
+            selectedColors.remove(at: idx)
+        } else if selectedColors.count < 3 && supplyCount(BallColor(rawValue: c.rawValue)!) > 0 {
+            selectedColors.append(c)
+        }
+    }
+
+    var canConfirmTake3: Bool {
+        guard isHumanTurn, phase == .main, !selectedColors.isEmpty else { return false }
+        return canApplyMainAction(state, .take3(colors: selectedColors))
+    }
+
+    func confirmTake3() {
+        guard canConfirmTake3 else { return }
+        performMain(.take3(colors: selectedColors))
+    }
+
+    func canTake2(_ c: Color) -> Bool {
+        guard isHumanTurn, phase == .main else { return false }
+        return canApplyMainAction(state, .take2(color: c))
+    }
+
+    func take2(_ c: Color) {
+        guard canTake2(c) else { return }
+        performMain(.take2(color: c))
+    }
+
+    // MARK: - 카드 액션
+
+    func acquire(_ cardId: String) {
+        guard let pay = computePay(currentPlayer, cardOf(cardId)) else { return }
+        performMain(.acquire(cardId: cardId, pay: pay))
+    }
+    func reserve(_ cardId: String) { performMain(.reserve(cardId: cardId)) }
+    func reserveBlind(_ tier: Int) { performMain(.reserveBlind(tier: tier)) }
+
+    /// 카드 상세의 '진화': 이 카드를 대상으로 하는 합법 진화가 있으면 가능(턴당 1회).
+    func canEvolveInto(_ cardId: String) -> Bool {
+        guard isHumanTurn, phase == .main, !state.evolvedThisTurn else { return false }
+        return legalEvolutions(state).contains { $0.targetId == cardId }
+    }
+
+    func evolveInto(_ cardId: String) {
+        guard canEvolveInto(cardId),
+              let e = legalEvolutions(state).first(where: { $0.targetId == cardId }) else { return }
+        applyEvolution(state, e)
+        lastMessage = "\(cardOf(cardId).name)(으)로 진화!"
+        endHumanTurn()
+    }
+
+    // MARK: - 메인 액션 실행 → 진화 단계 or 턴 종료
+
+    private func performMain(_ action: MainAction) {
+        guard isHumanTurn, phase == .main, canApplyMainAction(state, action) else { return }
+        applyMainAction(state, action)
+        selectedColors = []
+        lastMessage = describe(action)
+        pendingEvolutions = legalEvolutions(state)
+        if pendingEvolutions.isEmpty {
+            endHumanTurn()
+        } else {
+            phase = .evolve
+        }
+    }
+
+    // MARK: - 진화
+
+    func applyEvolutionChoice(_ e: Evolution) {
+        guard phase == .evolve, canApplyEvolution(state, e) else { return }
+        applyEvolution(state, e)
+        let t = cardOf(e.targetId)
+        lastMessage = "\(t.name)(으)로 진화!"
+        endHumanTurn()
+    }
+
+    func skipEvolution() {
+        guard phase == .evolve else { return }
+        endHumanTurn()
+    }
+
+    private func endHumanTurn() {
+        pendingEvolutions = []
+        finishTurn(state)
+        resolvePhaseForCurrent()
+    }
+
+    // MARK: - 턴 흐름 / AI
+
+    /// 현재 플레이어에 맞춰 phase 결정. AI 차례면 구동.
+    private func resolvePhaseForCurrent() {
+        if state.ended { phase = .gameOver; return }
+        if isHumanTurn {
+            phase = .main
+            // 사람인데 합법 행동이 전혀 없으면(드묾) 강제 패스.
+            if legalMainActions(state).isEmpty {
+                lastMessage = "행동 불가 — 패스"
+                finishTurn(state)
+                resolvePhaseForCurrent()
+            }
+            return
+        }
+        phase = .aiThinking
+        runAITurn()
+    }
+
+    private func runAITurn() {
+        Task { @MainActor in
+            // 시각적 텀(생각 중 표시). 계산은 메인 액터에서 동기 수행(엔진은 릴리스 빌드에서 빠름).
+            try? await Task.sleep(nanoseconds: 550_000_000)
+            guard phase == .aiThinking, !state.ended else { return }
+            if let pick = chooseStrongTurn(state, aiRng) {
+                let p = state.currentPlayer
+                takeTurn(state, pick.action, pick.evolution)
+                lastMessage = "\(playerNames[p]): \(describe(pick.action))"
+            } else {
+                finishTurn(state)
+            }
+            resolvePhaseForCurrent()
+        }
+    }
+
+    // MARK: - 텍스트
+
+    private func describe(_ a: MainAction) -> String {
+        switch a {
+        case let .take3(colors):
+            return "구슬 " + colors.map { COLOR_DISPLAY[BallColor(rawValue: $0.rawValue)!] ?? "" }.joined(separator: "·")
+        case let .take2(color):
+            return "구슬 " + (COLOR_DISPLAY[BallColor(rawValue: color.rawValue)!] ?? "") + " 2개"
+        case let .reserve(cardId):
+            return cardOf(cardId).name + " 보관"
+        case .reserveBlind:
+            return "비공개 보관"
+        case let .acquire(cardId, _):
+            return cardOf(cardId).name + " 획득"
+        }
+    }
+}

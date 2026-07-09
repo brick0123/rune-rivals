@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "dream_mira.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

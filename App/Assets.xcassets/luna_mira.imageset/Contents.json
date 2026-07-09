@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "luna_mira.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

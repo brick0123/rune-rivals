@@ -1,0 +1,15 @@
+{
+  "name": "rune-rivals-relay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "룬 라이벌즈 온라인 대전 WebSocket 릴레이 서버",
+  "scripts": {
+    "start": "node relay.mjs",
+    "test": "node test-relay.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}

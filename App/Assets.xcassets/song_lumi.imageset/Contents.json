@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "song_lumi.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "sage_blue.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

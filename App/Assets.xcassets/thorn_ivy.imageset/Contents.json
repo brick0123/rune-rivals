@@ -1,0 +1,9 @@
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "filename" : "thorn_ivy.png"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
