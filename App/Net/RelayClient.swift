@@ -49,13 +49,13 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
         isOpen = false
     }
 
-    // MARK: URLSessionWebSocketDelegate
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol proto: String?) {
-        isOpen = true
+    // MARK: URLSessionWebSocketDelegate (nonisolated — 델리게이트 콜백은 메인 액터 밖에서 온다)
+    nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol proto: String?) {
+        Task { @MainActor in self.isOpen = true }
     }
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        isOpen = false
-        onEvent?(.closed("closed(\(closeCode.rawValue))"))
+    nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
+        let code = closeCode.rawValue
+        Task { @MainActor in self.isOpen = false; self.onEvent?(.closed("closed(\(code))")) }
     }
 
     // MARK: 수신 루프
