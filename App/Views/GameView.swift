@@ -107,6 +107,7 @@ struct CardDetailSheet: View {
     let card: CardDef
     let reserved: Bool
     let close: () -> Void
+    @State private var showReserveConfirm = false
 
     var body: some View {
         ZStack {
@@ -139,9 +140,10 @@ struct CardDetailSheet: View {
 
                         if !reserved {
                             Button {
-                                vm.reserve(card.id); close()
+                                if vm.reserveNeedsConfirm(card.id) { showReserveConfirm = true }
+                                else { vm.reserve(card.id); close() }
                             } label: {
-                                Text(vm.supplyCount(.gold) > 0 ? "찜 (+궁극의 룬 오브)" : "찜").frame(maxWidth: .infinity)
+                                Text("찜").frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.bordered).tint(.orange)
                             .disabled(!vm.canReserveCard(card.id))
@@ -161,6 +163,12 @@ struct CardDetailSheet: View {
                 }
             }
             .padding(20)
+        }
+        .confirmationDialog("찜코인 없이 가져올까요?", isPresented: $showReserveConfirm, titleVisibility: .visible) {
+            Button("가져오기") { vm.reserve(card.id); close() }
+            Button("취소", role: .cancel) { }
+        } message: {
+            Text(vm.supplyCount(.gold) == 0 ? "남은 찜코인이 없어요." : "구슬이 10개라 찜코인을 받을 수 없어요.")
         }
     }
 }

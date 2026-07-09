@@ -1,13 +1,16 @@
-// 시작 메뉴: 모드(AI/핫시트) + 인원(2~4) 선택 → 게임 시작.
+// 시작 메뉴: 모드(싱글/일반/랭크) 선택. 싱글은 나+AI3 고정, 온라인은 방에서 인원 결정.
 
 import SwiftUI
 import RuneRivalsEngine
 
 struct MenuView: View {
     @State private var mode: GameMode = .single
-    @State private var numPlayers: Int = 4
-    @State private var start = false
+    @State private var startSingle = false
+    @State private var openLobby = false
     @State private var seed: UInt32 = 1
+
+    /// 싱글 기본 인원(나 + AI 3).
+    private let singlePlayers = 4
 
     var body: some View {
         NavigationStack {
@@ -38,17 +41,15 @@ struct MenuView: View {
                     }
                     .padding(.vertical, 6)
 
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 12) {
                         pickerBlock(title: "모드") {
                             Picker("", selection: $mode) {
                                 ForEach(GameMode.allCases) { Text($0.rawValue).tag($0) }
                             }.pickerStyle(.segmented)
                         }
-                        pickerBlock(title: "인원") {
-                            Picker("", selection: $numPlayers) {
-                                ForEach(2...4, id: \.self) { Text("\($0)인").tag($0) }
-                            }.pickerStyle(.segmented)
-                        }
+                        Text(modeDesc)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textDim)
                     }
                     .padding(18)
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
@@ -56,10 +57,13 @@ struct MenuView: View {
 
                     Button {
                         guard mode.isAvailable else { return }
-                        seed = UInt32.random(in: 1...UInt32.max)
-                        start = true
+                        switch mode {
+                        case .single: seed = UInt32.random(in: 1...UInt32.max); startSingle = true
+                        case .casual: openLobby = true
+                        case .ranked: break
+                        }
                     } label: {
-                        Text(mode.isAvailable ? "게임 시작" : "온라인 준비 중")
+                        Text(startLabel)
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 15)
@@ -70,9 +74,6 @@ struct MenuView: View {
                     .disabled(!mode.isAvailable)
                     .padding(.horizontal, 24)
 
-                    Text(mode == .single ? "나 vs AI \(numPlayers - 1)명" : "온라인 대전은 준비 중입니다")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.textDim)
                     Spacer()
                     Text("18점 도달 후 마지막 라운드까지 진행 · 동점 시 진화수 → 카드수")
                         .font(.caption2)
@@ -82,10 +83,27 @@ struct MenuView: View {
                 }
                 .padding()
             }
-            .navigationDestination(isPresented: $start) {
-                GameView(vm: GameViewModel(mode: mode, numPlayers: numPlayers, seed: seed))
-                    .navigationBarBackButtonHidden(false)
+            .navigationDestination(isPresented: $startSingle) {
+                GameView(vm: GameViewModel(mode: .single, numPlayers: singlePlayers, seed: seed))
             }
+            .navigationDestination(isPresented: $openLobby) {
+                OnlineLobbyView(ranked: false)
+            }
+        }
+    }
+
+    private var modeDesc: String {
+        switch mode {
+        case .single: return "혼자서 AI 3명과 대전"
+        case .casual: return "온라인 일반전 — 방을 만들거나 참가"
+        case .ranked: return "랭크전 — 준비 중"
+        }
+    }
+    private var startLabel: String {
+        switch mode {
+        case .single: return "게임 시작"
+        case .casual: return "일반전 입장"
+        case .ranked: return "랭크 준비 중"
         }
     }
 

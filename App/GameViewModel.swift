@@ -5,11 +5,14 @@ import SwiftUI
 import RuneRivalsEngine
 
 enum GameMode: String, CaseIterable, Identifiable {
-    case single = "싱글"
-    case online = "온라인"
+    case single = "싱글"   // 오프라인: 나 vs AI
+    case casual = "일반"   // 온라인 일반전(방 기반)
+    case ranked = "랭크"   // 온라인 랭크전 — 준비 중
     var id: String { rawValue }
-    /// 온라인(네트워크 대전)은 준비 중 — 아직 시작 불가.
-    var isAvailable: Bool { self == .single }
+    /// 랭크는 준비 중.
+    var isAvailable: Bool { self != .ranked }
+    /// 온라인 서버가 필요한 모드.
+    var isOnline: Bool { self == .casual || self == .ranked }
 }
 
 /// 현재 턴의 단계.
@@ -116,6 +119,14 @@ final class GameViewModel {
     }
     func reserve(_ cardId: String) { performMain(.reserve(cardId: cardId)) }
     func reserveBlind(_ tier: Int) { performMain(.reserveBlind(tier: tier)) }
+
+    /// 찜은 되지만 찜코인을 못 받는 상황(손패 10개 꽉 참 or 남은 찜코인 0개) → 확인 필요.
+    func reserveNeedsConfirm(_ cardId: String) -> Bool {
+        guard canReserveCard(cardId) else { return false }
+        let handFull = handBallCount(currentPlayer) >= MAX_BALLS_IN_HAND
+        let noCoin = supplyCount(.gold) == 0
+        return handFull || noCoin
+    }
 
     /// 카드 상세의 '진화': 이 카드를 대상으로 하는 합법 진화가 있으면 가능(턴당 1회).
     func canEvolveInto(_ cardId: String) -> Bool {
