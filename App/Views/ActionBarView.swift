@@ -1,7 +1,6 @@
 // 하단 액션 바: take3 확인 / 진화 선택 / AI 대기 표시.
 
 import SwiftUI
-import RuneRivalsEngine
 
 struct ActionBarView: View {
     @Bindable var vm: GameViewModel

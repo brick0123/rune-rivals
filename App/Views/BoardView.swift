@@ -1,7 +1,6 @@
 // 보드: 3·2·1단계 공개 카드 행(+비공개 보관 버튼) + 전설·희귀 행. 각 행 가로 스크롤.
 
 import SwiftUI
-import RuneRivalsEngine
 
 struct BoardView: View {
     @Bindable var vm: GameViewModel

@@ -1,7 +1,6 @@
 // 플레이어 패널. compact=상대 요약, full=현재 사람 상세(손패·보너스·보관).
 
 import SwiftUI
-import RuneRivalsEngine
 
 struct PlayerPanelView: View {
     @Bindable var vm: GameViewModel

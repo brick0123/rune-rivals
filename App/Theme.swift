@@ -1,7 +1,6 @@
 // UI 테마: 엔진 Color/BallColor → SwiftUI Color 매핑 + 표시 헬퍼 + 레이아웃 상수.
 
 import SwiftUI
-import RuneRivalsEngine
 
 enum Theme {
     // 배경/표면

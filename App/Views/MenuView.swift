@@ -1,7 +1,6 @@
 // 시작 메뉴: 모드(싱글/일반/랭크) 선택. 싱글은 나+AI3 고정, 온라인은 방에서 인원 결정.
 
 import SwiftUI
-import RuneRivalsEngine
 
 struct MenuView: View {
     @State private var mode: GameMode = .single

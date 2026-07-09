@@ -1,7 +1,6 @@
 // 단일 캐릭터 카드. 이미지 + 점수 + 보너스색 + 비용 pip.
 
 import SwiftUI
-import RuneRivalsEngine
 
 struct CardView: View {
     let card: CardDef

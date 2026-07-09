@@ -1,7 +1,6 @@
 // 게임 종료: 순위(점수 → 진화수 → 카드수 tiebreak).
 
 import SwiftUI
-import RuneRivalsEngine
 
 struct GameOverView: View {
     @Bindable var vm: GameViewModel

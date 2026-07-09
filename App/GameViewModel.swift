@@ -2,7 +2,6 @@
 // 규칙 변경은 전부 엔진 함수를 통한다(여기선 입력 수집·턴 진행·AI 구동만).
 
 import SwiftUI
-import RuneRivalsEngine
 
 enum GameMode: String, CaseIterable, Identifiable {
     case single = "싱글"   // 오프라인: 나 vs AI

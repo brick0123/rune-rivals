@@ -1,7 +1,6 @@
 // 게임 메인 화면. 상대 요약 + 보드 + 현재 플레이어 패널 + 구슬 + 액션 바 + 카드 상세/종료.
 
 import SwiftUI
-import RuneRivalsEngine
 
 struct GameView: View {
     @Bindable var vm: GameViewModel
