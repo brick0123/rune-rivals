@@ -16,3 +16,12 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # 아래 시크릿들은 sync:false → 블루프린트에 값 저장 안 하고 Render 대시보드에서 입력.
+      # 랭킹/집계(Supabase)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      # 히스토리/리플레이(Firebase Firestore) — 서비스계정 JSON 원문 또는 base64.
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false

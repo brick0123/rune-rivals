@@ -8,8 +8,11 @@
     "start": "node relay.mjs",
     "test": "node test-relay.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
+    "firebase-admin": "^14.1.0",
     "ws": "^8.21.0"
   }
 }

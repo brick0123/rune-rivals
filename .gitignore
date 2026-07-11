@@ -6,3 +6,9 @@ xcuserdata/
 .DS_Store
 node_modules/
 online/node_modules/
+# 시크릿 — 절대 커밋 금지
+.env
+.env.*
+serviceAccount*.json
+*firebase-adminsdk*.json
+*-service-account*.json
