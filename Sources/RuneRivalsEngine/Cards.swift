@@ -23,13 +23,13 @@ struct LineSpec {
 // 라인 1~15. 색상은 원본 룰의 라인 색과 정확히 대응(캐릭터만 룬 라이벌즈).
 let LINES: [LineSpec] = [
     LineSpec(color: .blue,   s1: StageName("카이", "kai"),      s2: StageName("아쿠아 카이", "aqua_kai"),   s3: StageName("타이드 카이", "tide_kai")),
-    LineSpec(color: .yellow, s1: StageName("레오", "leo"),      s2: StageName("솔라 레오", "solar_leo"),     s3: StageName("선 레오", "sun_leo")),
+    LineSpec(color: .yellow, s1: StageName("레오", "leo"),      s2: StageName("솔라 레오", "solar_leo"),     s3: StageName("태양 레오", "sun_leo")),
     LineSpec(color: .red,    s1: StageName("린", "rin"),        s2: StageName("루비 린", "ruby_rin"),        s3: StageName("플레임 린", "flame_rin")),
     LineSpec(color: .pink,   s1: StageName("미라", "mira"),     s2: StageName("루나 미라", "luna_mira"),      s3: StageName("드림 미라", "dream_mira")),
     LineSpec(color: .black,  s1: StageName("녹스", "nox"),      s2: StageName("보이드 녹스", "void_nox"),     s3: StageName("나이트 녹스", "night_nox")),
     LineSpec(color: .blue,   s1: StageName("아이비", "ivy"),    s2: StageName("쏜 아이비", "thorn_ivy"),      s3: StageName("블룸 아이비", "bloom_ivy")),
     LineSpec(color: .yellow, s1: StageName("볼트", "bolt"),     s2: StageName("플래시 볼트", "flash_bolt"),   s3: StageName("스카이 볼트", "sky_bolt")),
-    LineSpec(color: .red,    s1: StageName("브랜", "bran"),     s2: StageName("스파크 브랜", "spark_bran"),   s3: StageName("포지 브랜", "forge_bran")),
+    LineSpec(color: .red,    s1: StageName("환", "bran"),       s2: StageName("전투 환", "spark_bran"),      s3: StageName("베테랑 환", "forge_bran")),
     LineSpec(color: .pink,   s1: StageName("나이라", "nyra"),   s2: StageName("마스크 나이라", "mask_nyra"),  s3: StageName("트릭 나이라", "trick_nyra")),
     LineSpec(color: .black,  s1: StageName("기어", "gear"),     s2: StageName("클락 기어", "clock_gear"),     s3: StageName("블랙 기어", "black_gear")),
     LineSpec(color: .blue,   s1: StageName("루미", "lumi"),     s2: StageName("송 루미", "song_lumi"),        s3: StageName("웨이브 루미", "wave_lumi")),
