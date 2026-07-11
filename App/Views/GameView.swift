@@ -10,9 +10,10 @@ struct GameView: View {
 
     /// 하단 상세 패널의 대상 플레이어 = 사람(P0).
     private var focusIdx: Int { 0 }
-    /// 나(focusIdx)를 제외한 상대 인덱스.
+    /// 나(focusIdx) 제외한 상대 인덱스 — 순위 정렬(꼴찌 먼저 … 선두 마지막).
+    /// 우측 레일에선 내 패널이 맨 아래이므로 내 바로 위가 1등이 된다.
     private var opponentIndices: [Int] {
-        (0..<vm.state.numPlayers).filter { $0 != focusIdx }
+        Array(vm.ranking.filter { $0 != focusIdx }.reversed())
     }
 
     var body: some View {
@@ -88,11 +89,9 @@ struct GameView: View {
     private var opponents: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(0..<vm.state.numPlayers, id: \.self) { i in
-                    if i != focusIdx {
-                        PlayerPanelView(vm: vm, playerIdx: i)
-                            .frame(width: 190)
-                    }
+                ForEach(opponentIndices, id: \.self) { i in
+                    PlayerPanelView(vm: vm, playerIdx: i)
+                        .frame(width: 190)
                 }
             }
             .padding(.horizontal, 10)

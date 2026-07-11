@@ -35,6 +35,14 @@ struct PlayerPanelView: View {
                 .font(full ? .headline : .caption.weight(.semibold))
                 .foregroundStyle(.white)
             Spacer()
+            // 가장 먼저 시작한 플레이어 표시(별 왼쪽).
+            if playerIdx == vm.state.startingPlayer {
+                Text("F")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundStyle(.black)
+                    .frame(width: 16, height: 16)
+                    .background(.orange, in: Circle())
+            }
             Label("\(vm.points(playerIdx))", systemImage: "star.fill")
                 .font(full ? .subheadline.weight(.bold) : .caption2.weight(.bold))
                 .foregroundStyle(.yellow)
