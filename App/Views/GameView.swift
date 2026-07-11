@@ -4,6 +4,7 @@ import SwiftUI
 
 struct GameView: View {
     @Bindable var vm: GameViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var detail: CardDef?
     @State private var detailReserved = false
 
@@ -23,8 +24,7 @@ struct GameView: View {
                 }
             }
         }
-        .navigationTitle("룬 라이벌즈")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $detail) { card in
             CardDetailSheet(vm: vm, card: card, reserved: detailReserved) { detail = nil }
                 .presentationDetents([.height(360)])
@@ -35,7 +35,7 @@ struct GameView: View {
     // 세로: 위에서 아래로 상대 → 보드 → 내 조작.
     private var portraitLayout: some View {
         VStack(spacing: 10) {
-            opponents
+            HStack(spacing: 8) { backButton; opponents }
             boardScroll
             bottom
         }
@@ -46,7 +46,7 @@ struct GameView: View {
     private var landscapeLayout: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(spacing: 8) {
-                opponents
+                HStack(spacing: 8) { backButton; opponents }
                 boardScroll
             }
             .frame(maxWidth: .infinity)
@@ -65,6 +65,17 @@ struct GameView: View {
         }
     }
 
+    // 네비바 제거 후 메뉴 복귀용 컴팩트 버튼(상대 목록 줄에 인라인 배치 → 세로 공간 미소비).
+    private var backButton: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(Theme.surface, in: Circle())
+        }
+    }
+
     private var opponents: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -77,6 +88,8 @@ struct GameView: View {
             }
             .padding(.horizontal, 10)
         }
+        // 가로 스크롤이 세로 공간을 잠식하지 않도록 콘텐츠 높이에 고정 → 보드 세로 스크롤 영역 확보.
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var bottom: some View {

@@ -58,10 +58,22 @@ cat > "$XCASSETS/AccentColor.colorset/Contents.json" <<'JSON'
 }
 JSON
 
-# AppIcon: 대표 카드(red_nova)를 1024 정사각으로 패딩. 실패 시 빈 아이콘.
+# AppIcon: 대표 카드(red_nova)를 1024 정사각으로. 원본을 정사각 패딩 후 1024 리사이즈(2단계).
+# 주의: sips 에서 --padColor 와 --padToHeightWidth 를 한 명령에 같이 쓰면 패딩이 무시됨 → 반드시 분리.
 mkdir -p "$XCASSETS/AppIcon.appiconset"
 ICON_SRC="$CARDS/legendary/red_nova.png"
-if [ -e "$ICON_SRC" ] && sips -s format png --padColor 101828 --padToHeightWidth 1024 1024 "$ICON_SRC" --out "$XCASSETS/AppIcon.appiconset/appicon.png" >/dev/null 2>&1; then
+ICON_OUT="$XCASSETS/AppIcon.appiconset/appicon.png"
+icon_ok=0
+if [ -e "$ICON_SRC" ]; then
+  iw=$(sips -g pixelWidth "$ICON_SRC" | awk '/pixelWidth/{print $2}')
+  ih=$(sips -g pixelHeight "$ICON_SRC" | awk '/pixelHeight/{print $2}')
+  im=$(( iw > ih ? iw : ih ))
+  if sips --padColor 101828 -p "$im" "$im" "$ICON_SRC" --out "$ICON_OUT" >/dev/null 2>&1 \
+     && sips -z 1024 1024 "$ICON_OUT" --out "$ICON_OUT" >/dev/null 2>&1; then
+    icon_ok=1
+  fi
+fi
+if [ "$icon_ok" = 1 ]; then
   cat > "$XCASSETS/AppIcon.appiconset/Contents.json" <<'JSON'
 {
   "images" : [

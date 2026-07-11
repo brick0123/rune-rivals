@@ -30,8 +30,8 @@ final class GameViewModel {
     let playerNames: [String]
 
     private(set) var phase: TurnPhase = .main
-    /// take3 용 선택 컬러(최대 3, 서로 다름).
-    var selectedColors: [Color] = []
+    /// 구슬 선택: 색 → 선택 개수(1=서로 다른 색 take3용, 2=같은 색 take2). 탭으로 0→1→2→0 순환.
+    private(set) var ballPick: [Color: Int] = [:]
     /// 마지막 로그 메시지(간단 피드백).
     private(set) var lastMessage: String = ""
     /// 진화 후보(evolve 단계).
@@ -79,25 +79,41 @@ final class GameViewModel {
     }
     func supplyCount(_ c: BallColor) -> Int { state.supply[c] ?? 0 }
 
-    // MARK: - 구슬 집기
+    // MARK: - 구슬 집기 (탭만으로 0→1→2→0 순환)
 
-    func toggleColor(_ c: Color) {
+    /// 이 색이 현재 몇 개 선택됐는지(0/1/2).
+    func pickedCount(_ c: Color) -> Int { ballPick[c] ?? 0 }
+
+    /// 표시용: 선택 구슬을 개수만큼 펼친 목록.
+    var pickedList: [Color] { ballPick.flatMap { c, n in Array(repeating: c, count: n) } }
+
+    /// 같은 색 2개(take2) 모드인지.
+    private var isTake2Mode: Bool { ballPick.values.contains(2) }
+
+    /// 구슬 탭: 0→1→(같은 색 2개 가능하면 2, 아니면 해제)→0.
+    func tapColor(_ c: Color) {
         guard isHumanTurn, phase == .main else { return }
-        if let idx = selectedColors.firstIndex(of: c) {
-            selectedColors.remove(at: idx)
-        } else if selectedColors.count < 3 && supplyCount(BallColor(rawValue: c.rawValue)!) > 0 {
-            selectedColors.append(c)
+        switch pickedCount(c) {
+        case 0:
+            // 같은 색 2개 모드 진행 중이면 다른 색은 추가 불가.
+            if isTake2Mode { return }
+            guard supplyCount(BallColor(rawValue: c.rawValue)!) > 0 else { return }
+            guard ballPick.count < 3 else { return }
+            var next = ballPick
+            next[c] = 1
+            // 손 여유칸 등 take3 합법성 확인 후 반영.
+            guard canApplyMainAction(state, .take3(colors: Array(next.keys))) else { return }
+            ballPick = next
+        case 1:
+            // 단독 선택이고 같은 색 2개가 가능하면 → 2, 아니면 해제.
+            if ballPick.count == 1 && canTake2(c) {
+                ballPick[c] = 2
+            } else {
+                ballPick[c] = nil
+            }
+        default: // 2 → 해제
+            ballPick[c] = nil
         }
-    }
-
-    var canConfirmTake3: Bool {
-        guard isHumanTurn, phase == .main, !selectedColors.isEmpty else { return false }
-        return canApplyMainAction(state, .take3(colors: selectedColors))
-    }
-
-    func confirmTake3() {
-        guard canConfirmTake3 else { return }
-        performMain(.take3(colors: selectedColors))
     }
 
     func canTake2(_ c: Color) -> Bool {
@@ -105,10 +121,25 @@ final class GameViewModel {
         return canApplyMainAction(state, .take2(color: c))
     }
 
-    func take2(_ c: Color) {
-        guard canTake2(c) else { return }
-        performMain(.take2(color: c))
+    /// 선택 상태에 대응하는 액션(2 있으면 take2, 아니면 take3).
+    private var ballAction: MainAction? {
+        if let two = ballPick.first(where: { $0.value == 2 }) {
+            return .take2(color: two.key)
+        }
+        return ballPick.isEmpty ? nil : .take3(colors: Array(ballPick.keys))
     }
+
+    var canConfirmBalls: Bool {
+        guard isHumanTurn, phase == .main, let a = ballAction else { return false }
+        return canApplyMainAction(state, a)
+    }
+
+    func confirmBalls() {
+        guard canConfirmBalls, let a = ballAction else { return }
+        performMain(a)
+    }
+
+    func clearBalls() { ballPick = [:] }
 
     // MARK: - 카드 액션
 
@@ -146,7 +177,7 @@ final class GameViewModel {
     private func performMain(_ action: MainAction) {
         guard isHumanTurn, phase == .main, canApplyMainAction(state, action) else { return }
         applyMainAction(state, action)
-        selectedColors = []
+        ballPick = [:]
         lastMessage = describe(action)
         pendingEvolutions = legalEvolutions(state)
         if pendingEvolutions.isEmpty {

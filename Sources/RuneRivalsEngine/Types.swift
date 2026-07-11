@@ -50,7 +50,7 @@ public let STAGE_TIERS: [Int] = [1, 2, 3]
 public typealias ColorMap = [Color: Int]
 
 /// 카드 정의(정적). 덱·보드·보관 더미는 id 로 카드를 참조한다.
-public struct CardDef: Hashable, Sendable {
+public struct CardDef: Hashable, Sendable, Identifiable {
     /// 고유 덱 id, 예: "s1-001" · "rare-01" · "leg-03"
     public let id: String
     /// 한글 표시 이름(동일 이름의 변형 카드가 여러 장일 수 있음).

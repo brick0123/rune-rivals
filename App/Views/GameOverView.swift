@@ -8,7 +8,7 @@ struct GameOverView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.7).ignoresSafeArea()
+            SwiftUI.Color.black.opacity(0.7).ignoresSafeArea()
             VStack(spacing: 16) {
                 Text("게임 종료").font(.largeTitle.weight(.black)).foregroundStyle(.white)
                 if let w = vm.winner {

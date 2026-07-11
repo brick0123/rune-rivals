@@ -66,7 +66,7 @@ struct MenuView: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 15)
-                            .background(mode.isAvailable ? Color.accentColor : Theme.surfaceHi,
+                            .background(mode.isAvailable ? SwiftUI.Color("AccentColor") : Theme.surfaceHi,
                                         in: RoundedRectangle(cornerRadius: 14))
                             .foregroundStyle(mode.isAvailable ? .white : Theme.textDim)
                     }

@@ -1,4 +1,4 @@
-// 공용 구슬 공급대. 컬러 5색은 선택 가능(take3), 4개↑면 2개 집기 가능. gold 는 비선택(획득 시 자동).
+// 공용 구슬 공급대. 컬러 5색은 탭으로 선택(1개→2개→해제 순환), gold 는 비선택(획득 시 자동).
 
 import SwiftUI
 
@@ -16,30 +16,16 @@ struct BallSupplyView: View {
 
     private func colorChip(_ c: Color) -> some View {
         let bc = BallColor(rawValue: c.rawValue)!
-        let selected = vm.selectedColors.contains(c)
+        let picked = vm.pickedCount(c)
         let n = vm.supplyCount(bc)
-        return VStack(spacing: 3) {
-            Ball(color: bc, count: n, size: 44, selected: selected)
-                .onTapGesture { vm.toggleColor(c) }
-            if vm.canTake2(c) {
-                Button("×2") { vm.take2(c) }
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8).padding(.vertical, 2)
-                    .background(Theme.surfaceHi, in: Capsule())
-            } else {
-                Color.clear.frame(height: 18)
-            }
-        }
-        .opacity(n > 0 ? 1 : 0.35)
+        return Ball(color: bc, count: n, size: 44, selected: picked > 0, badge: picked)
+            .onTapGesture { vm.tapColor(c) }
+            .opacity(n > 0 ? 1 : 0.35)
     }
 
     private var goldChip: some View {
-        VStack(spacing: 3) {
-            Ball(color: .gold, count: vm.supplyCount(.gold), size: 44, selected: false)
-            Color.clear.frame(height: 18)
-        }
-        .opacity(vm.supplyCount(.gold) > 0 ? 1 : 0.35)
+        Ball(color: .gold, count: vm.supplyCount(.gold), size: 44, selected: false)
+            .opacity(vm.supplyCount(.gold) > 0 ? 1 : 0.35)
     }
 }
 
@@ -49,6 +35,8 @@ struct Ball: View {
     var count: Int? = nil
     var size: CGFloat = 40
     var selected: Bool = false
+    /// 선택한 개수(0=미선택, 1·2). 1 이상이면 우상단 배지 표시.
+    var badge: Int = 0
 
     @State private var glow = false
     private var isGold: Bool { color == .gold }
@@ -66,6 +54,18 @@ struct Ball: View {
                     Text("\(count)")
                         .font(.system(size: size * 0.42, weight: .black, design: .rounded))
                         .foregroundStyle(Theme.onBall(color))
+                }
+            }
+            // 선택 개수 배지(우상단): 1개/2개 구분 표시.
+            .overlay(alignment: .topTrailing) {
+                if badge > 0 {
+                    Text("\(badge)")
+                        .font(.system(size: size * 0.3, weight: .black, design: .rounded))
+                        .foregroundStyle(.black)
+                        .frame(width: size * 0.42, height: size * 0.42)
+                        .background(.white, in: Circle())
+                        .overlay(Circle().stroke(Theme.bg, lineWidth: 1.5))
+                        .offset(x: size * 0.12, y: -size * 0.12)
                 }
             }
             // 찜코인(골드)은 반짝이는 보라 글로우로 강조.

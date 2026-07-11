@@ -13,7 +13,7 @@ struct OnlineLobbyView: View {
             VStack(spacing: 18) {
                 Image(systemName: "wifi")
                     .font(.system(size: 44))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(SwiftUI.Color("AccentColor"))
                 Text(ranked ? "랭크전" : "일반전")
                     .font(.title.weight(.black))
                     .foregroundStyle(.white)

@@ -24,13 +24,13 @@ struct PlayerPanelView: View {
         .background(isCurrent ? Theme.surfaceHi : Theme.surface, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isCurrent ? Color.accentColor : .clear, lineWidth: 2)
+                .stroke(isCurrent ? SwiftUI.Color("AccentColor") : .clear, lineWidth: 2)
         )
     }
 
     private var header: some View {
         HStack(spacing: 6) {
-            if isCurrent { Circle().fill(Color.accentColor).frame(width: 7, height: 7) }
+            if isCurrent { Circle().fill(SwiftUI.Color("AccentColor")).frame(width: 7, height: 7) }
             Text(vm.playerNames[playerIdx])
                 .font(full ? .headline : .caption.weight(.semibold))
                 .foregroundStyle(.white)

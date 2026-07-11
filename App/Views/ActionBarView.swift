@@ -21,23 +21,23 @@ struct ActionBarView: View {
     // 구슬 선택 확인 + 안내
     private var mainBar: some View {
         HStack(spacing: 10) {
-            if vm.selectedColors.isEmpty {
-                Text("구슬을 탭해 3개 선택 · ×2로 같은 색 2개 · 카드를 탭해 획득/보관")
+            if vm.ballPick.isEmpty {
+                Text("구슬을 탭해 선택 · 한 번 더 탭하면 같은 색 2개(가능 시) · 카드를 탭해 획득/보관")
                     .font(.caption)
                     .foregroundStyle(Theme.textDim)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 HStack(spacing: 5) {
-                    ForEach(Array(vm.selectedColors.enumerated()), id: \.offset) { _, c in
+                    ForEach(Array(vm.pickedList.enumerated()), id: \.offset) { _, c in
                         Ball(color: BallColor(rawValue: c.rawValue)!, size: 26)
                     }
                 }
                 Spacer()
-                Button("취소") { vm.selectedColors = [] }
+                Button("취소") { vm.clearBalls() }
                     .buttonStyle(.bordered).tint(.gray)
-                Button("가져오기") { vm.confirmTake3() }
+                Button("가져오기") { vm.confirmBalls() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!vm.canConfirmTake3)
+                    .disabled(!vm.canConfirmBalls)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
