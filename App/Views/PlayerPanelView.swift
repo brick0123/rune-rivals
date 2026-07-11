@@ -24,13 +24,13 @@ struct PlayerPanelView: View {
         .background(isCurrent ? Theme.surfaceHi : Theme.surface, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isCurrent ? SwiftUI.Color("AccentColor") : .clear, lineWidth: 2)
+                .stroke(isCurrent ? SwiftUI.Color.green : .clear, lineWidth: 2)
         )
     }
 
     private var header: some View {
         HStack(spacing: 6) {
-            if isCurrent { Circle().fill(SwiftUI.Color("AccentColor")).frame(width: 7, height: 7) }
+            if isCurrent { Circle().fill(SwiftUI.Color.green).frame(width: 7, height: 7) }
             Text(vm.playerNames[playerIdx])
                 .font(full ? .headline : .caption.weight(.semibold))
                 .foregroundStyle(.white)
@@ -46,35 +46,49 @@ struct PlayerPanelView: View {
         }
     }
 
-    // 상대 요약: 보너스(획득 카드 수) + 볼 총수 + 보관 수
+    // 상대 요약: 보유 구슬(색별) + 보너스(획득 카드 색) + 총 공/보관 수
     private var compactBody: some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
+            // 보유 구슬(색별, 0개 색은 생략) + 총 개수
             HStack(spacing: 3) {
+                ForEach(BALL_COLORS, id: \.self) { bc in
+                    let n = p.balls[bc] ?? 0
+                    if n > 0 { Ball(color: bc, count: n, size: 18) }
+                }
+                Spacer(minLength: 2)
+                Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
+                    .font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textDim)
+            }
+            // 보너스(획득 카드 색) + 보관 카드 수
+            HStack(spacing: 3) {
+                Image(systemName: "square.stack.fill").font(.system(size: 8)).foregroundStyle(Theme.textDim)
                 ForEach(COLORS, id: \.self) { c in
                     let n = p.bonus[c] ?? 0
-                    if n > 0 {
-                        pill(text: "\(n)", color: Theme.color(c))
-                    }
+                    if n > 0 { pill(text: "\(n)", color: Theme.color(c)) }
                 }
-            }
-            Spacer()
-            Image(systemName: "circle.grid.2x2.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
-            Text("\(handBallCount(p))").font(.caption2).foregroundStyle(Theme.textDim)
-            if !p.reserved.isEmpty {
-                Image(systemName: "hand.raised.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
-                Text("\(p.reserved.count)").font(.caption2).foregroundStyle(Theme.textDim)
+                Spacer(minLength: 2)
+                if !p.reserved.isEmpty {
+                    Image(systemName: "hand.raised.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
+                    Text("\(p.reserved.count)").font(.caption2).foregroundStyle(Theme.textDim)
+                }
             }
         }
     }
 
     private var fullBody: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 손패 구슬
+            // 손패 구슬 + 총 개수(N/최대)
             HStack(spacing: 6) {
                 ForEach(BALL_COLORS, id: \.self) { bc in
                     let n = p.balls[bc] ?? 0
                     Ball(color: bc, count: n, size: 30)
                         .opacity(n > 0 ? 1 : 0.28)
+                }
+                Spacer(minLength: 4)
+                VStack(spacing: 0) {
+                    Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
+                        .font(.subheadline.weight(.black)).foregroundStyle(.white)
+                    Text("공").font(.system(size: 9)).foregroundStyle(Theme.textDim)
                 }
             }
             // 보너스(획득 카드 컬러)

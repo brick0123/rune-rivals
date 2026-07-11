@@ -10,6 +10,10 @@ struct GameView: View {
 
     /// 하단 상세 패널의 대상 플레이어 = 사람(P0).
     private var focusIdx: Int { 0 }
+    /// 나(focusIdx)를 제외한 상대 인덱스.
+    private var opponentIndices: [Int] {
+        (0..<vm.state.numPlayers).filter { $0 != focusIdx }
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -42,18 +46,23 @@ struct GameView: View {
         .padding(.top, 6)
     }
 
-    // 가로: 좌(상대 + 보드) | 우(내 조작 레일).
+    // 가로: 좌(뒤로가기 + 보드) | 우(상대 패널들 + 내 조작 레일, 세로 스크롤).
     private var landscapeLayout: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(spacing: 8) {
-                HStack(spacing: 8) { backButton; opponents }
+                HStack { backButton; Spacer() }
                 boardScroll
             }
             .frame(maxWidth: .infinity)
             ScrollView {
-                bottom
+                VStack(spacing: 8) {
+                    ForEach(opponentIndices, id: \.self) { i in
+                        PlayerPanelView(vm: vm, playerIdx: i)
+                    }
+                    bottom
+                }
             }
-            .frame(width: 300)
+            .frame(width: 330)
         }
         .padding(8)
     }
