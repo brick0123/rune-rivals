@@ -154,7 +154,7 @@ private func reveal(_ state: GameState, _ tier: Tier, _ n: Int) {
     state.board[tier] = board
 }
 
-public func createGame(seed: UInt32, numPlayers: Int = 4, humanIndex: Int = 0) -> GameState {
+public func createGame(seed: UInt32, numPlayers: Int = 3, humanIndex: Int = 0) -> GameState {
     let rng = Rng(seed: seed)
     var decks: [Tier: [String]] = [:]
     var board: [Tier: [String]] = [:]
@@ -166,7 +166,7 @@ public func createGame(seed: UInt32, numPlayers: Int = 4, humanIndex: Int = 0) -
     for i in 0..<numPlayers {
         players.append(PlayerState(id: i, isHuman: i == humanIndex))
     }
-    // 인원수별 시작 칩 조정: 4인 기준, 3인 -2, 2인(이하) -3. gold 는 제외.
+    // 인원수별 시작 칩 조정(최대 3인): 3인 -2, 2인 -3. gold(찜코인)는 제외.
     let cut = numPlayers <= 2 ? 3 : (numPlayers == 3 ? 2 : 0)
     var supply = INITIAL_BALL_SUPPLY
     for c in [BallColor.red, .blue, .black, .pink, .yellow] {

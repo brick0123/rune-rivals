@@ -1,4 +1,4 @@
-// 시작 메뉴: 모드(싱글/일반/랭크) 선택. 싱글은 나+AI3 고정, 온라인은 방에서 인원 결정.
+// 시작 메뉴: 모드(싱글/일반/랭크) 선택. 싱글은 나+AI2(3인) 고정, 온라인은 방에서 인원 결정(최대 3인).
 
 import SwiftUI
 
@@ -8,8 +8,8 @@ struct MenuView: View {
     @State private var openLobby = false
     @State private var seed: UInt32 = 1
 
-    /// 싱글 기본 인원(나 + AI 3).
-    private let singlePlayers = 4
+    /// 싱글 기본 인원(나 + AI 2). 최대 3인.
+    private let singlePlayers = 3
 
     var body: some View {
         NavigationStack {
@@ -93,7 +93,7 @@ struct MenuView: View {
 
     private var modeDesc: String {
         switch mode {
-        case .single: return "혼자서 AI 3명과 대전"
+        case .single: return "혼자서 AI 2명과 대전"
         case .casual: return "온라인 일반전 — 방을 만들거나 참가"
         case .ranked: return "랭크전 — 준비 중"
         }

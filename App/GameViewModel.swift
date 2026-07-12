@@ -174,9 +174,17 @@ final class GameViewModel {
 
     // MARK: - 메인 액션 실행 → 진화 단계 or 턴 종료
 
+    /// GameState 는 class 라 in-place 변경이 @Observable 에 감지되지 않는다.
+    /// 상태 변경 후 state 프로퍼티를 재발행해 상태 기반 뷰(패널·보드·구슬 등)를 갱신한다.
+    private func publishState() {
+        let s = state
+        state = s
+    }
+
     private func performMain(_ action: MainAction) {
         guard isHumanTurn, phase == .main, canApplyMainAction(state, action) else { return }
         applyMainAction(state, action)
+        publishState()
         ballPick = [:]
         lastMessage = describe(action)
         pendingEvolutions = legalEvolutions(state)
@@ -212,6 +220,7 @@ final class GameViewModel {
 
     /// 현재 플레이어에 맞춰 phase 결정. AI 차례면 구동.
     private func resolvePhaseForCurrent() {
+        publishState()
         if state.ended { phase = .gameOver; return }
         if isHumanTurn {
             phase = .main
