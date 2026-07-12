@@ -5,11 +5,13 @@ import SwiftUI
 struct PlayerPanelView: View {
     @Bindable var vm: GameViewModel
     let playerIdx: Int
+    /// 현재 턴 좌석. 부모가 값으로 주입 → 턴 변경 시 입력이 바뀌어 패널이 확실히 재렌더된다.
+    let currentSeat: Int
     var full: Bool = false
     var onTapReserved: ((CardDef) -> Void)? = nil
 
     private var p: PlayerState { vm.state.players[playerIdx] }
-    private var isCurrent: Bool { vm.state.currentPlayer == playerIdx && !vm.state.ended }
+    private var isCurrent: Bool { currentSeat == playerIdx && !vm.state.ended }
 
     var body: some View {
         VStack(alignment: .leading, spacing: full ? 8 : 4) {
@@ -54,32 +56,30 @@ struct PlayerPanelView: View {
         }
     }
 
-    // 상대 요약: 보유 구슬(색별) + 보너스(획득 카드 색) + 총 공/보관 수
+    // 상대 요약: 구슬(전 색)·보너스(획득 카드 색)를 항상(0이면 흐리게) 표시 → 내 패널처럼 한눈에 보유 파악.
     private var compactBody: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // 보유 구슬(색별, 0개 색은 생략) + 총 개수
+        VStack(alignment: .leading, spacing: 5) {
+            // 구슬 — 5색 + gold, 0은 흐리게, 우측에 총 개수
             HStack(spacing: 3) {
                 ForEach(BALL_COLORS, id: \.self) { bc in
                     let n = p.balls[bc] ?? 0
-                    if n > 0 { Ball(color: bc, count: n, size: 18) }
+                    Ball(color: bc, count: n, size: 19).opacity(n > 0 ? 1 : 0.25)
                 }
                 Spacer(minLength: 2)
                 Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
                     .font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textDim)
             }
-            // 보너스(획득 카드 색) + 보관 카드 수
-            HStack(spacing: 3) {
-                Image(systemName: "square.stack.fill").font(.system(size: 8)).foregroundStyle(Theme.textDim)
+            // 카드 보너스 — 5색, 0은 흐리게
+            HStack(spacing: 4) {
+                Image(systemName: "rectangle.stack.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
                 ForEach(COLORS, id: \.self) { c in
                     let n = p.bonus[c] ?? 0
-                    if n > 0 { pill(text: "\(n)", color: Theme.color(c)) }
+                    pill(text: "\(n)", color: Theme.color(c)).opacity(n > 0 ? 1 : 0.3)
                 }
-                Spacer(minLength: 2)
-                if !p.reserved.isEmpty {
-                    Image(systemName: "hand.raised.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
-                    Text("\(p.reserved.count)").font(.caption2).foregroundStyle(Theme.textDim)
-                }
+                Spacer(minLength: 0)
             }
+            // 획득/찜 카드 — 모두 공개(찜 = 주황 테두리)
+            cardsStrip(38)
         }
     }
 
@@ -107,17 +107,35 @@ struct PlayerPanelView: View {
                     pill(text: "\(n)", color: Theme.color(c)).opacity(n > 0 ? 1 : 0.3)
                 }
             }
-            // 보관 카드
-            if !p.reserved.isEmpty {
-                HStack(spacing: 6) {
-                    Text("보관").font(.caption2).foregroundStyle(Theme.textDim)
+            // 카드(획득 + 찜) — 모두 공개. 찜 = 주황 테두리, 탭하면 상세/획득.
+            cardsStrip(52)
+        }
+    }
+
+    /// 획득(scored) + 찜(reserved) 카드를 가로로 나열 — 모든 플레이어에게 공개.
+    /// 찜 카드는 주황 테두리 + 손 아이콘으로 구분. onTapReserved 가 있으면(내 패널) 찜 카드 탭 시 상세/획득.
+    @ViewBuilder
+    private func cardsStrip(_ size: CGFloat) -> some View {
+        if !p.scored.isEmpty || !p.reserved.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(p.scored, id: \.self) { id in
+                        CardView(card: cardOf(id), width: size)
+                    }
                     ForEach(p.reserved, id: \.self) { id in
                         let card = cardOf(id)
-                        CardView(card: card, width: 52,
-                                 dimmed: !vm.canAcquire(id) && vm.phase == .main)
+                        CardView(card: card, width: size,
+                                 dimmed: onTapReserved != nil && !vm.canAcquire(id) && vm.phase == .main)
+                            .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(.orange, lineWidth: 2))
+                            .overlay(alignment: .topLeading) {
+                                Image(systemName: "hand.raised.fill")
+                                    .font(.system(size: max(8, size * 0.2), weight: .bold))
+                                    .foregroundStyle(.orange).padding(2)
+                            }
                             .onTapGesture { onTapReserved?(card) }
                     }
                 }
+                .padding(.horizontal, 1)
             }
         }
     }
