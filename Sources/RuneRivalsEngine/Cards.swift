@@ -102,7 +102,7 @@ let STAGE3: [[LeafCardSpec]] = [
 /// 희귀 카드: (한글명, romanized, 보너스색, 비용). 점수 0, 보너스 2. 색상은 원본 룰과 대응.
 let RARE: [(ko: String, rom: String, color: Color, cost: ColorMap)] = [
     ("마스터 루크", "master_rook",  .red,    [.black: 3, .blue: 2]),
-    ("푸른 현자",   "sage_blue",    .blue,   [.pink: 3, .yellow: 2]),
+    ("천문학자 코스모", "sage_blue",    .blue,   [.pink: 3, .yellow: 2]),
     ("황금 방울",   "gold_bell",    .yellow, [.blue: 3, .pink: 2]),
     ("레이디 루나", "lady_luna",    .pink,   [.red: 3, .black: 2]),
     ("검은 깃",     "black_quill",  .black,  [.yellow: 3, .red: 2]),
@@ -113,7 +113,7 @@ let LEGENDARY: [(ko: String, rom: String, color: Color, cost: ColorMap)] = [
     ("붉은 노바",     "red_nova",    .red,    [.pink: 3, .blue: 3, .yellow: 3]),
     ("푸른 아틀라스", "blue_atlas",  .blue,   [.black: 3, .yellow: 3, .red: 3]),
     ("황금 아스트라", "gold_astra",  .yellow, [.red: 3, .pink: 3, .black: 3]),
-    ("달의 세라프",   "moon_seraph", .pink,   [.blue: 3, .yellow: 3, .black: 3]),
+    ("토리",          "tory",        .pink,   [.blue: 3, .yellow: 3, .black: 3]),
     ("공허의 방패",   "void_aegis",  .black,  [.pink: 3, .red: 3, .blue: 3]),
 ]
 
