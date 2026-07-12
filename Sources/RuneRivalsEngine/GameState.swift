@@ -49,6 +49,8 @@ public final class GameState {
     public var players: [PlayerState]
     public var currentPlayer: Int
     public var startingPlayer: Int
+    /// 턴 진행 순서(플레이어 인덱스 순열). 게임 시작 시 랜덤 결정. startingPlayer = turnOrder[0].
+    public var turnOrder: [Int]
     /// 누군가 18점 도달 → 현재 라운드 종료 시 게임 종료.
     public var triggeredEnd: Bool
     public var ended: Bool
@@ -57,7 +59,7 @@ public final class GameState {
 
     init(rng: Rng, numPlayers: Int, supply: [BallColor: Int],
          decks: [Tier: [String]], board: [Tier: [String]], players: [PlayerState],
-         currentPlayer: Int, startingPlayer: Int,
+         currentPlayer: Int, startingPlayer: Int, turnOrder: [Int],
          triggeredEnd: Bool, ended: Bool, evolvedThisTurn: Bool) {
         self.rng = rng
         self.numPlayers = numPlayers
@@ -67,6 +69,7 @@ public final class GameState {
         self.players = players
         self.currentPlayer = currentPlayer
         self.startingPlayer = startingPlayer
+        self.turnOrder = turnOrder
         self.triggeredEnd = triggeredEnd
         self.ended = ended
         self.evolvedThisTurn = evolvedThisTurn
@@ -173,10 +176,12 @@ public func createGame(seed: UInt32, numPlayers: Int = 3, humanIndex: Int = 0) -
         supply[c] = max(0, (INITIAL_BALL_SUPPLY[c] ?? 0) - cut)
     }
 
-    let firstPlayer = rng.int(numPlayers)
+    // 턴 순서 랜덤 결정(플레이어 인덱스 순열). 첫 플레이어 = turnOrder[0].
+    let turnOrder = rng.shuffle(Array(0..<numPlayers))
+    let firstPlayer = turnOrder[0]
     let state = GameState(
         rng: rng, numPlayers: numPlayers, supply: supply, decks: decks, board: board,
-        players: players, currentPlayer: firstPlayer, startingPlayer: firstPlayer,
+        players: players, currentPlayer: firstPlayer, startingPlayer: firstPlayer, turnOrder: turnOrder,
         triggeredEnd: false, ended: false, evolvedThisTurn: false
     )
     for t in STAGE_TIERS { reveal(state, .stage(t), REVEAL_PER_STAGE) }
@@ -197,7 +202,7 @@ public func cloneGame(_ s: GameState) -> GameState {
     return GameState(
         rng: s.rng.clone(), numPlayers: s.numPlayers, supply: s.supply,
         decks: decks, board: board, players: players,
-        currentPlayer: s.currentPlayer, startingPlayer: s.startingPlayer,
+        currentPlayer: s.currentPlayer, startingPlayer: s.startingPlayer, turnOrder: s.turnOrder,
         triggeredEnd: s.triggeredEnd, ended: s.ended, evolvedThisTurn: s.evolvedThisTurn
     )
 }

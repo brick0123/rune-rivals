@@ -138,7 +138,9 @@ public func finishTurn(_ s: GameState) {
     let justPlayed = s.currentPlayer
     if playerPoints(s.players[justPlayed]) >= WIN_THRESHOLD { s.triggeredEnd = true }
     s.evolvedThisTurn = false
-    let next = (s.currentPlayer + 1) % s.numPlayers
+    // turnOrder(랜덤 순열) 기준으로 다음 플레이어. 첫 플레이어로 되돌아오면 라운드 종료.
+    let pos = s.turnOrder.firstIndex(of: s.currentPlayer) ?? 0
+    let next = s.turnOrder[(pos + 1) % s.numPlayers]
     s.currentPlayer = next
     if s.triggeredEnd && next == s.startingPlayer { s.ended = true }
 }

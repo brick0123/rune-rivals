@@ -30,6 +30,9 @@ final class GameViewModel {
     let playerNames: [String]
 
     private(set) var phase: TurnPhase = .main
+    /// 현재 턴 좌석(state.currentPlayer 미러). state 는 class 라 in-place 변경이 관측 안 되므로
+    /// VM 의 저장 프로퍼티로 노출 → 턴이 바뀔 때마다(AI→AI 포함) 뷰가 확실히 갱신된다.
+    private(set) var currentSeat: Int = 0
     /// 구슬 선택: 색 → 선택 개수(1=서로 다른 색 take3용, 2=같은 색 take2). 탭으로 0→1→2→0 순환.
     private(set) var ballPick: [Color: Int] = [:]
     /// 마지막 로그 메시지(간단 피드백).
@@ -220,6 +223,7 @@ final class GameViewModel {
 
     /// 현재 플레이어에 맞춰 phase 결정. AI 차례면 구동.
     private func resolvePhaseForCurrent() {
+        currentSeat = state.currentPlayer
         publishState()
         if state.ended { phase = .gameOver; return }
         if isHumanTurn {

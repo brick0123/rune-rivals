@@ -39,6 +39,7 @@ public struct GameSnapshot: Codable, Sendable {
     public var players: [PlayerSnapshot]
     public var currentPlayer: Int
     public var startingPlayer: Int
+    public var turnOrder: [Int]
     public var triggeredEnd: Bool
     public var ended: Bool
     public var evolvedThisTurn: Bool
@@ -68,6 +69,7 @@ public struct GameSnapshot: Codable, Sendable {
         }
         currentPlayer = s.currentPlayer
         startingPlayer = s.startingPlayer
+        turnOrder = s.turnOrder
         triggeredEnd = s.triggeredEnd
         ended = s.ended
         evolvedThisTurn = s.evolvedThisTurn
@@ -107,6 +109,7 @@ public extension GameState {
         }
         currentPlayer = snap.currentPlayer
         startingPlayer = snap.startingPlayer
+        turnOrder = snap.turnOrder
         triggeredEnd = snap.triggeredEnd
         ended = snap.ended
         evolvedThisTurn = snap.evolvedThisTurn
