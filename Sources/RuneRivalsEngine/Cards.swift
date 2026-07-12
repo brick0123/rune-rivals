@@ -111,7 +111,7 @@ let RARE: [(ko: String, rom: String, color: Color, cost: ColorMap)] = [
 /// 전설 카드: (한글명, romanized, 보너스색, 비용). 점수 2, 보너스 2. 유니크 존재.
 let LEGENDARY: [(ko: String, rom: String, color: Color, cost: ColorMap)] = [
     ("붉은 노바",     "red_nova",    .red,    [.pink: 3, .blue: 3, .yellow: 3]),
-    ("푸른 아틀라스", "blue_atlas",  .blue,   [.black: 3, .yellow: 3, .red: 3]),
+    ("니카",          "nika",        .blue,   [.black: 3, .yellow: 3, .red: 3]),
     ("황금 아스트라", "gold_astra",  .yellow, [.red: 3, .pink: 3, .black: 3]),
     ("토리",          "tory",        .pink,   [.blue: 3, .yellow: 3, .black: 3]),
     ("공허의 방패",   "void_aegis",  .black,  [.pink: 3, .red: 3, .blue: 3]),
