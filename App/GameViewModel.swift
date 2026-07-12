@@ -51,6 +51,16 @@ final class GameViewModel {
         resolvePhaseForCurrent()
     }
 
+    /// 같은 인원으로 새 게임 시작(새 랜덤 시드 → 새 턴 순서).
+    func newGame() {
+        state = createGame(seed: UInt32.random(in: 1 ... .max), numPlayers: state.numPlayers, humanIndex: 0)
+        phase = .main
+        ballPick = [:]
+        pendingEvolutions = []
+        lastMessage = ""
+        resolvePhaseForCurrent()
+    }
+
     // MARK: - 조회
 
     var currentPlayer: PlayerState { state.players[state.currentPlayer] }

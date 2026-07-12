@@ -6,11 +6,11 @@ struct BoardView: View {
     @Bindable var vm: GameViewModel
     let onTapCard: (CardDef) -> Void
 
-    private let cardW: CGFloat = 84
+    private let cardW: CGFloat = 96
 
     var body: some View {
-        // 세로 스택. 각 행은 폭이 넘치면 가로 스크롤(카드 겹침 방지).
-        VStack(spacing: 10) {
+        // 세로 스택(왼쪽 정렬). 각 행은 폭이 넘치면 가로 스크롤(카드 겹침 방지).
+        VStack(alignment: .leading, spacing: 10) {
             nobleRow()
             ForEach([3, 2, 1], id: \.self) { tier in
                 stageRow(tier)
@@ -25,7 +25,8 @@ struct BoardView: View {
                 ForEach(vm.boardSlots(.stage(tier)), id: \.self) { id in
                     let card = cardOf(id)
                     CardView(card: card, width: cardW,
-                             dimmed: !(vm.canAcquire(id) || vm.canReserveCard(id)) && vm.isHumanTurn && vm.phase == .main)
+                             dimmed: !(vm.canAcquire(id) || vm.canReserveCard(id) || vm.canEvolveInto(id)) && vm.isHumanTurn && vm.phase == .main,
+                             evolveReady: vm.canEvolveInto(id))
                         .onTapGesture { onTapCard(card) }
                 }
                 ForEach(0..<max(0, REVEAL_PER_STAGE - vm.boardSlots(.stage(tier)).count), id: \.self) { _ in
@@ -34,6 +35,7 @@ struct BoardView: View {
             }
             .padding(.horizontal, 2)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // 전설·희귀: 각각 좌측에 덱 탭(보관 불가 → 비활성, 남은 장수만 표시) + 공개 카드. 가로 스크롤.
@@ -47,6 +49,7 @@ struct BoardView: View {
             }
             .padding(.horizontal, 2)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder

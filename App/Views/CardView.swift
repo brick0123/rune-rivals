@@ -7,6 +7,8 @@ struct CardView: View {
     var width: CGFloat = 96
     var faceDown: Bool = false
     var dimmed: Bool = false
+    /// 지금(내 턴) 이 카드로 진화 가능 → 청록 글로우 강조.
+    var evolveReady: Bool = false
 
     private var height: CGFloat { width / Theme.cardAspect }
 
@@ -30,6 +32,12 @@ struct CardView: View {
             RoundedRectangle(cornerRadius: Theme.cardCorner)
                 .stroke(card.bonus.keys.first.map { Theme.color($0) } ?? .gray, lineWidth: 2)
         )
+        // 지금 진화 가능하면 청록 글로우로 강조.
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cardCorner)
+                .stroke(evolveReady ? SwiftUI.Color.cyan : .clear, lineWidth: 3)
+        )
+        .shadow(color: evolveReady ? SwiftUI.Color.cyan.opacity(0.7) : .clear, radius: evolveReady ? 7 : 0)
         .opacity(dimmed ? 0.45 : 1)
     }
 

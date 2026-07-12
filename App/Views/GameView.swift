@@ -46,19 +46,19 @@ struct GameView: View {
 
     // 세로: 위에서 아래로 상대 → 보드 → 내 조작.
     private var portraitLayout: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) { backButton; opponents }
+        VStack(spacing: 8) {
+            HStack(spacing: 8) { backButton; newGameButton; opponents }
             boardScroll
             bottom
         }
-        .padding(.top, 6)
+        .padding(.top, 4)
     }
 
     // 가로: 좌(뒤로가기 + 보드) | 우(상대 패널들 + 내 조작 레일, 세로 스크롤).
     private var landscapeLayout: some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(spacing: 8) {
-                HStack { backButton; Spacer() }
+        HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 6) {
+                HStack { backButton; Spacer(); newGameButton }
                 boardScroll
             }
             .frame(maxWidth: .infinity)
@@ -72,13 +72,15 @@ struct GameView: View {
             }
             .frame(width: 330)
         }
-        .padding(8)
+        .padding(.horizontal, 10).padding(.vertical, 4)
+        // 왼쪽만 화면 끝까지 확장. 오른쪽은 세이프에어리어 유지(다이나믹 아일랜드가 우측 패널 가리는 것 방지).
+        .ignoresSafeArea(.container, edges: .leading)
     }
 
     private var boardScroll: some View {
         ScrollView {
             BoardView(vm: vm) { card in openDetail(card, reserved: false) }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 4)
         }
     }
 
@@ -90,6 +92,17 @@ struct GameView: View {
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
                 .background(Theme.surface, in: Circle())
+        }
+    }
+
+    // 새 게임(같은 인원, 새 랜덤 시드/순서).
+    private var newGameButton: some View {
+        Button { vm.newGame() } label: {
+            Label("새 게임", systemImage: "arrow.clockwise")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Theme.surfaceHi, in: Capsule())
         }
     }
 
@@ -136,6 +149,30 @@ struct CardDetailPopup: View {
     let close: () -> Void
     @State private var showReserveConfirm = false
 
+    // 진화 안내 — 카드 우측 여백. 진화 후 모습 + 진화에 필요한 보너스(evoCost).
+    private var evolutionColumn: some View {
+        VStack(spacing: 6) {
+            Text("진화").font(.caption2.weight(.bold)).foregroundStyle(.cyan)
+            Image(systemName: "arrow.up").font(.system(size: 18, weight: .black)).foregroundStyle(.cyan)
+            Image(card.evolvesTo ?? "")
+                .resizable().scaledToFit()
+                .frame(width: 72, height: 72)
+                .background(Theme.surfaceHi)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(SwiftUI.Color.cyan, lineWidth: 1.5))
+            if let evo = card.evoCost, evo.values.contains(where: { $0 > 0 }) {
+                Text("진화 조건").font(.system(size: 9)).foregroundStyle(Theme.textDim)
+                VStack(spacing: 3) {
+                    ForEach(COLORS.filter { (evo[$0] ?? 0) > 0 }, id: \.self) { c in
+                        CostPip(color: c, count: evo[c] ?? 0, size: 20)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(width: 92)
+    }
+
     var body: some View {
         ZStack {
             // 살짝만 어둡게(뒤 보드가 비쳐 보임). 바깥 탭 시 닫힘.
@@ -143,17 +180,12 @@ struct CardDetailPopup: View {
                 .onTapGesture { close() }
 
             VStack(spacing: 10) {
-                CardView(card: card, width: 150)
+                HStack(alignment: .top, spacing: 12) {
+                    CardView(card: card, width: 150)
+                    if card.evolvesTo != nil { evolutionColumn }
+                }
                 Text(card.name).font(.headline).foregroundStyle(.white)
                 Text(card.tier.label).font(.caption).foregroundStyle(card.tier.accent)
-
-                // 비용
-                HStack(spacing: 5) {
-                    ForEach(COLORS.filter { (card.cost[$0] ?? 0) > 0 }, id: \.self) { c in
-                        CostPip(color: c, count: card.cost[c] ?? 0, size: 22)
-                    }
-                    if isNoble(card.tier) { CostPip(color: nil, count: 1, size: 22) }
-                }
 
                 // 액션 — 구매/찜/진화 항상 표시. 가능하면 컬러, 불가하면 회색+비활성.
                 HStack(spacing: 8) {
@@ -188,7 +220,7 @@ struct CardDetailPopup: View {
                 .padding(.top, 2)
             }
             .padding(16)
-            .frame(maxWidth: 300)
+            .frame(maxWidth: 340)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.stroke, lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 20, y: 8)
