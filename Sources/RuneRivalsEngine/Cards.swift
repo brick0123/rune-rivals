@@ -103,7 +103,7 @@ let STAGE3: [[LeafCardSpec]] = [
 let RARE: [(ko: String, rom: String, color: Color, cost: ColorMap)] = [
     ("마스터 루크", "master_rook",  .red,    [.black: 3, .blue: 2]),
     ("천문학자 코스모", "sage_blue",    .blue,   [.pink: 3, .yellow: 2]),
-    ("황금 방울",   "gold_bell",    .yellow, [.blue: 3, .pink: 2]),
+    ("아틀라스",     "atlas",        .yellow, [.blue: 3, .pink: 2]),
     ("레이디 루나", "lady_luna",    .pink,   [.red: 3, .black: 2]),
     ("검은 깃",     "black_quill",  .black,  [.yellow: 3, .red: 2]),
 ]
