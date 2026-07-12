@@ -13,7 +13,7 @@ import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 const PORT = Number(process.env.PORT ?? 5178);
-const MAX_SEATS = 4;
+const MAX_SEATS = 3;
 const GRACE_MS = 30000; // 일시 끊김 시 좌석 유지(재접속 대기) 시간
 
 // Supabase(랭킹/집계 DB, Postgres) — 서버에만 키를 둔다. 미설정 시 전적 기능만 비활성(대전엔 영향 없음).
