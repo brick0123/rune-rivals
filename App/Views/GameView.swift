@@ -7,6 +7,7 @@ struct GameView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: CardDef?
     @State private var detailReserved = false
+    @State private var showNewGameConfirm = false
 
     /// 하단 상세 패널의 대상 플레이어 = 사람(P0).
     private var focusIdx: Int { 0 }
@@ -42,12 +43,18 @@ struct GameView: View {
         .toolbar(.hidden, for: .navigationBar)
         .animation(.easeInOut(duration: 0.15), value: detail)
         .animation(.easeInOut, value: vm.phase)
+        .confirmationDialog("새 게임을 시작할까요?", isPresented: $showNewGameConfirm, titleVisibility: .visible) {
+            Button("새 게임", role: .destructive) { vm.newGame() }
+            Button("취소", role: .cancel) { }
+        } message: {
+            Text("현재 게임이 초기화됩니다.")
+        }
     }
 
     // 세로: 위에서 아래로 상대 → 보드 → 내 조작.
     private var portraitLayout: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 8) { backButton; newGameButton; opponents }
+            HStack(spacing: 8) { backButton; timerView; newGameButton; opponents }
             boardScroll
             bottom
         }
@@ -58,7 +65,7 @@ struct GameView: View {
     private var landscapeLayout: some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(spacing: 6) {
-                HStack { backButton; Spacer(); newGameButton }
+                HStack { backButton; Spacer(); timerView; Spacer(); newGameButton }
                 boardScroll
             }
             .frame(maxWidth: .infinity)
@@ -97,13 +104,22 @@ struct GameView: View {
 
     // 새 게임(같은 인원, 새 랜덤 시드/순서).
     private var newGameButton: some View {
-        Button { vm.newGame() } label: {
+        Button { showNewGameConfirm = true } label: {
             Label("새 게임", systemImage: "arrow.clockwise")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10).padding(.vertical, 6)
                 .background(Theme.surfaceHi, in: Capsule())
         }
+    }
+
+    // 턴 타이머(남은 초). 10초 이하 빨강.
+    private var timerView: some View {
+        Label("\(vm.secondsLeft)", systemImage: "timer")
+            .font(.system(size: 14, weight: .black, design: .rounded))
+            .foregroundStyle(vm.secondsLeft <= 10 ? SwiftUI.Color.red : .white)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Theme.surfaceHi, in: Capsule())
     }
 
     private var opponents: some View {

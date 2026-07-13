@@ -33,6 +33,11 @@ final class GameViewModel {
     /// 현재 턴 좌석(state.currentPlayer 미러). state 는 class 라 in-place 변경이 관측 안 되므로
     /// VM 의 저장 프로퍼티로 노출 → 턴이 바뀔 때마다(AI→AI 포함) 뷰가 확실히 갱신된다.
     private(set) var currentSeat: Int = 0
+    /// 턴당 제한 시간(초).
+    static let turnSeconds = 40
+    /// 현재 턴 남은 시간(초). 매 턴 turnSeconds 로 리셋, 0 되면 자동 패스.
+    private(set) var secondsLeft = 40
+    @ObservationIgnored private var timerTask: Task<Void, Never>?
     /// 구슬 선택: 색 → 선택 개수(1=서로 다른 색 take3용, 2=같은 색 take2). 탭으로 0→1→2→0 순환.
     private(set) var ballPick: [Color: Int] = [:]
     /// 마지막 로그 메시지(간단 피드백).
@@ -232,10 +237,41 @@ final class GameViewModel {
     // MARK: - 턴 흐름 / AI
 
     /// 현재 플레이어에 맞춰 phase 결정. AI 차례면 구동.
+    // MARK: - 턴 타이머
+
+    /// 현재 턴 타이머 시작(40초 카운트다운). 매 턴 리셋.
+    private func startTurnTimer() {
+        timerTask?.cancel()
+        secondsLeft = Self.turnSeconds
+        timerTask = Task { @MainActor [weak self] in
+            while true {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard let self, !Task.isCancelled, !self.state.ended else { return }
+                if self.secondsLeft > 0 { self.secondsLeft -= 1 }
+                if self.secondsLeft <= 0 { self.onTurnTimeout(); return }
+            }
+        }
+    }
+
+    private func stopTimer() { timerTask?.cancel(); timerTask = nil }
+
+    /// 시간 초과: 사람 턴이면 자동 패스(진화 단계면 진화 생략). AI 턴이면 무시(이미 빠르게 진행).
+    private func onTurnTimeout() {
+        guard !state.ended else { return }
+        if phase == .evolve {
+            lastMessage = "시간 초과 — 진화 생략"
+            skipEvolution()
+        } else if isHumanTurn && phase == .main {
+            lastMessage = "시간 초과 — 패스"
+            endHumanTurn()
+        }
+    }
+
     private func resolvePhaseForCurrent() {
         currentSeat = state.currentPlayer
         publishState()
-        if state.ended { phase = .gameOver; return }
+        if state.ended { phase = .gameOver; stopTimer(); return }
+        startTurnTimer()
         if isHumanTurn {
             phase = .main
             // 사람인데 합법 행동이 전혀 없으면(드묾) 강제 패스.
