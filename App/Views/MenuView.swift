@@ -29,7 +29,7 @@ struct MenuView: View {
 
                     // 대표 캐릭터 미리보기
                     HStack(spacing: -18) {
-                        ForEach(["kai", "flame_rin", "gold_astra", "night_rune"], id: \.self) { name in
+                        ForEach(["kai", "flame_rin", "kenny", "night_rune"], id: \.self) { name in
                             Image(name)
                                 .resizable().scaledToFill()
                                 .frame(width: 66, height: 92)

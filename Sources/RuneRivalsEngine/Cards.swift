@@ -112,7 +112,7 @@ let RARE: [(ko: String, rom: String, color: Color, cost: ColorMap)] = [
 let LEGENDARY: [(ko: String, rom: String, color: Color, cost: ColorMap)] = [
     ("붉은 노바",     "red_nova",    .red,    [.pink: 3, .blue: 3, .yellow: 3]),
     ("니카",          "nika",        .blue,   [.black: 3, .yellow: 3, .red: 3]),
-    ("황금 아스트라", "gold_astra",  .yellow, [.red: 3, .pink: 3, .black: 3]),
+    ("케니", "kenny",  .yellow, [.red: 3, .pink: 3, .black: 3]),
     ("토리",          "tory",        .pink,   [.blue: 3, .yellow: 3, .black: 3]),
     ("공허의 방패",   "void_aegis",  .black,  [.pink: 3, .red: 3, .blue: 3]),
 ]
