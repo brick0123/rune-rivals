@@ -1,4 +1,4 @@
-// 공용 구슬 공급대. 컬러 5색은 탭으로 선택(1개→2개→해제 순환), gold 는 비선택(획득 시 자동).
+// 공용 룬 공급대. 컬러 5색은 탭으로 선택(1개→2개→해제 순환), gold 는 비선택(획득 시 자동).
 
 import SwiftUI
 
@@ -32,7 +32,7 @@ struct BallSupplyView: View {
     }
 }
 
-/// 구슬 하나(색 원 + 개수).
+/// 룬 하나(색 원 + 개수).
 struct Ball: View {
     let color: BallColor
     var count: Int? = nil
@@ -71,7 +71,7 @@ struct Ball: View {
                         .offset(x: size * 0.12, y: -size * 0.12)
                 }
             }
-            // 찜코인(골드)은 반짝이는 보라 글로우로 강조.
+            // 마스터 룬(골드)은 반짝이는 보라 글로우로 강조.
             .shadow(color: isGold ? Theme.ballColor(.gold).opacity(0.9) : (selected ? .white.opacity(0.5) : .clear),
                     radius: isGold ? (glow ? 10 : 4) : (selected ? 5 : 0))
             .scaleEffect(selected ? 1.08 : 1)

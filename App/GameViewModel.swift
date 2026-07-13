@@ -38,7 +38,7 @@ final class GameViewModel {
     /// 현재 턴 남은 시간(초). 매 턴 turnSeconds 로 리셋, 0 되면 자동 패스.
     private(set) var secondsLeft = 40
     @ObservationIgnored private var timerTask: Task<Void, Never>?
-    /// 구슬 선택: 색 → 선택 개수(1=서로 다른 색 take3용, 2=같은 색 take2). 탭으로 0→1→2→0 순환.
+    /// 룬 선택: 색 → 선택 개수(1=서로 다른 색 take3용, 2=같은 색 take2). 탭으로 0→1→2→0 순환.
     private(set) var ballPick: [Color: Int] = [:]
     /// 마지막 로그 메시지(간단 피드백).
     private(set) var lastMessage: String = ""
@@ -97,18 +97,18 @@ final class GameViewModel {
     }
     func supplyCount(_ c: BallColor) -> Int { state.supply[c] ?? 0 }
 
-    // MARK: - 구슬 집기 (탭만으로 0→1→2→0 순환)
+    // MARK: - 룬 집기 (탭만으로 0→1→2→0 순환)
 
     /// 이 색이 현재 몇 개 선택됐는지(0/1/2).
     func pickedCount(_ c: Color) -> Int { ballPick[c] ?? 0 }
 
-    /// 표시용: 선택 구슬을 개수만큼 펼친 목록.
+    /// 표시용: 선택 룬을 개수만큼 펼친 목록.
     var pickedList: [Color] { ballPick.flatMap { c, n in Array(repeating: c, count: n) } }
 
     /// 같은 색 2개(take2) 모드인지.
     private var isTake2Mode: Bool { ballPick.values.contains(2) }
 
-    /// 구슬 탭: 0→1→(같은 색 2개 가능하면 2, 아니면 해제)→0.
+    /// 룬 탭: 0→1→(같은 색 2개 가능하면 2, 아니면 해제)→0.
     func tapColor(_ c: Color) {
         guard isHumanTurn, phase == .main else { return }
         switch pickedCount(c) {
@@ -168,7 +168,7 @@ final class GameViewModel {
     func reserve(_ cardId: String) { performMain(.reserve(cardId: cardId)) }
     func reserveBlind(_ tier: Int) { performMain(.reserveBlind(tier: tier)) }
 
-    /// 찜은 되지만 찜코인을 못 받는 상황(손패 10개 꽉 참 or 남은 찜코인 0개) → 확인 필요.
+    /// 찜은 되지만 마스터 룬을 못 받는 상황(손패 10개 꽉 참 or 남은 마스터 룬 0개) → 확인 필요.
     func reserveNeedsConfirm(_ cardId: String) -> Bool {
         guard canReserveCard(cardId) else { return false }
         let handFull = handBallCount(currentPlayer) >= MAX_BALLS_IN_HAND
@@ -193,7 +193,7 @@ final class GameViewModel {
     // MARK: - 메인 액션 실행 → 진화 단계 or 턴 종료
 
     /// GameState 는 class 라 in-place 변경이 @Observable 에 감지되지 않는다.
-    /// 상태 변경 후 state 프로퍼티를 재발행해 상태 기반 뷰(패널·보드·구슬 등)를 갱신한다.
+    /// 상태 변경 후 state 프로퍼티를 재발행해 상태 기반 뷰(패널·보드·룬 등)를 갱신한다.
     private func publishState() {
         let s = state
         state = s
@@ -307,9 +307,9 @@ final class GameViewModel {
     private func describe(_ a: MainAction) -> String {
         switch a {
         case let .take3(colors):
-            return "구슬 " + colors.map { COLOR_DISPLAY[BallColor(rawValue: $0.rawValue)!] ?? "" }.joined(separator: "·")
+            return "룬 " + colors.map { COLOR_DISPLAY[BallColor(rawValue: $0.rawValue)!] ?? "" }.joined(separator: "·")
         case let .take2(color):
-            return "구슬 " + (COLOR_DISPLAY[BallColor(rawValue: color.rawValue)!] ?? "") + " 2개"
+            return "룬 " + (COLOR_DISPLAY[BallColor(rawValue: color.rawValue)!] ?? "") + " 2개"
         case let .reserve(cardId):
             return cardOf(cardId).name + " 보관"
         case .reserveBlind:

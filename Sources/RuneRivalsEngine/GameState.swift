@@ -6,7 +6,7 @@ import Foundation
 public final class PlayerState {
     public let id: Int
     public var isHuman: Bool
-    /// 보유 구슬(컬러 5색 + gold).
+    /// 보유 룬(컬러 5색 + gold).
     public var balls: [BallColor: Int]
     /// 누적 컬러 보너스. 획득 시 증가, 진화 시 불변, 감소 없음.
     public var bonus: [Color: Int]
@@ -169,7 +169,7 @@ public func createGame(seed: UInt32, numPlayers: Int = 3, humanIndex: Int = 0) -
     for i in 0..<numPlayers {
         players.append(PlayerState(id: i, isHuman: i == humanIndex))
     }
-    // 인원수별 시작 칩 조정(최대 3인): 3인 -2, 2인 -3. gold(찜코인)는 제외.
+    // 인원수별 시작 칩 조정(최대 3인): 3인 -2, 2인 -3. gold(마스터 룬)는 제외.
     let cut = numPlayers <= 2 ? 3 : (numPlayers == 3 ? 2 : 0)
     var supply = INITIAL_BALL_SUPPLY
     for c in [BallColor.red, .blue, .black, .pink, .yellow] {

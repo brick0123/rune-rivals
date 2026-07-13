@@ -23,7 +23,7 @@ enum Theme {
 
     static func ballColor(_ c: BallColor) -> SwiftUI.Color {
         if let cc = c.asColor { return color(cc) }
-        // 찜코인(궁극의 룬 오브) — 노랑과 구분되도록 반짝이는 보라.
+        // 마스터 룬(궁극의 룬 오브) — 노랑과 구분되도록 반짝이는 보라.
         return SwiftUI.Color(red: 0.635, green: 0.294, blue: 0.941)
     }
 

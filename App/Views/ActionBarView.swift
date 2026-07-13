@@ -18,11 +18,11 @@ struct ActionBarView: View {
         .animation(.easeInOut(duration: 0.2), value: vm.phase)
     }
 
-    // 구슬 선택 확인 + 안내
+    // 룬 선택 확인 + 안내
     private var mainBar: some View {
         HStack(spacing: 10) {
             if vm.ballPick.isEmpty {
-                Text("구슬을 탭해 선택 · 한 번 더 탭하면 같은 색 2개(가능 시) · 카드를 탭해 획득/보관")
+                Text("룬을 탭해 선택 · 한 번 더 탭하면 같은 색 2개(가능 시) · 카드를 탭해 획득/보관")
                     .font(.caption)
                     .foregroundStyle(Theme.textDim)
                     .fixedSize(horizontal: false, vertical: true)

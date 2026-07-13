@@ -1,4 +1,4 @@
-// 정적 구슬 데이터. 색 = 컬러 5종 + gold(궁극의 룬 오브, 와일드).
+// 정적 룬 데이터. 색 = 컬러 5종 + gold(궁극의 룬 오브, 와일드).
 
 import Foundation
 
@@ -18,15 +18,15 @@ public let BALLS_BY_ID: [BallColor: BallDef] = Dictionary(
 /// UI 표시용 컬러명. gold 는 name 그대로 사용.
 public let COLOR_DISPLAY: [BallColor: String] = [
     .red: "빨강", .blue: "초록", .black: "검정",
-    .pink: "분홍", .yellow: "노랑", .gold: "궁극의 룬 오브",
+    .pink: "분홍", .yellow: "노랑", .gold: "마스터 룬",
 ]
 
-/// 게임 시작 시 공급 가능한 구슬 수.
+/// 게임 시작 시 공급 가능한 룬 수.
 public let INITIAL_BALL_SUPPLY: [BallColor: Int] = [
     .red: 7, .blue: 7, .black: 7, .pink: 7, .yellow: 7, .gold: 5,
 ]
 
-/// 컬러 구슬 보유 한도.
+/// 컬러 룬 보유 한도.
 public let MAX_BALLS_IN_HAND = 10
 /// 보관(예약) 카드 한도.
 public let MAX_RESERVED = 3

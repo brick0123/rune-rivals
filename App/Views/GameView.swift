@@ -1,4 +1,4 @@
-// 게임 메인 화면. 상대 요약 + 보드 + 현재 플레이어 패널 + 구슬 + 액션 바 + 카드 상세/종료.
+// 게임 메인 화면. 상대 요약 + 보드 + 현재 플레이어 패널 + 룬 + 액션 바 + 카드 상세/종료.
 
 import SwiftUI
 
@@ -173,6 +173,9 @@ struct CardDetailPopup: View {
     var viewOnly: Bool = false
     let close: () -> Void
     @State private var showReserveConfirm = false
+    @State private var showBuyConfirm = false
+    /// 이 카드 구매 시 사용되는 마스터 룬(gold) 개수.
+    private var goldForBuy: Int { computePay(vm.currentPlayer, card)?[.gold] ?? 0 }
 
     // 진화 안내 — 카드 우측 여백. 진화 후 모습 + 진화에 필요한 보너스(evoCost).
     private var evolutionColumn: some View {
@@ -216,7 +219,11 @@ struct CardDetailPopup: View {
                 if !viewOnly {
                 HStack(spacing: 8) {
                     let canBuy = vm.canAcquire(card.id)
-                    Button { vm.acquire(card.id); close() } label: {
+                    Button {
+                        // 마스터 룬을 써야 하면 확인 후 구매.
+                        if goldForBuy > 0 { showBuyConfirm = true }
+                        else { vm.acquire(card.id); close() }
+                    } label: {
                         Text("구매").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -264,11 +271,17 @@ struct CardDetailPopup: View {
             .shadow(color: .black.opacity(0.5), radius: 20, y: 8)
             .padding(24)
         }
-        .alert("찜코인 없이 가져올까요?", isPresented: $showReserveConfirm) {
+        .alert("마스터 룬 없이 가져올까요?", isPresented: $showReserveConfirm) {
             Button("예") { vm.reserve(card.id); close() }
             Button("아니요", role: .cancel) { }
         } message: {
-            Text(vm.supplyCount(.gold) == 0 ? "남은 찜코인이 없어요." : "구슬이 10개라 찜코인을 받을 수 없어요.")
+            Text(vm.supplyCount(.gold) == 0 ? "남은 마스터 룬이 없어요." : "룬이 10개라 마스터 룬을 받을 수 없어요.")
+        }
+        .alert("마스터 룬을 써서 구매할까요?", isPresented: $showBuyConfirm) {
+            Button("예") { vm.acquire(card.id); close() }
+            Button("아니요", role: .cancel) { }
+        } message: {
+            Text("마스터 룬 \(goldForBuy)개가 사용됩니다.")
         }
     }
 }

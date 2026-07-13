@@ -57,10 +57,10 @@ struct PlayerPanelView: View {
         }
     }
 
-    // 상대 요약: 구슬(전 색)·보너스(획득 카드 색)를 항상(0이면 흐리게) 표시 → 내 패널처럼 한눈에 보유 파악.
+    // 상대 요약: 룬(전 색)·보너스(획득 카드 색)를 항상(0이면 흐리게) 표시 → 내 패널처럼 한눈에 보유 파악.
     private var compactBody: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 구슬 — 5색 + gold, 0은 흐리게, 우측에 총 개수
+            // 룬 — 5색 + gold, 0은 흐리게, 우측에 총 개수
             HStack(spacing: 5) {
                 ForEach(BALL_COLORS, id: \.self) { bc in
                     let n = p.balls[bc] ?? 0
@@ -86,7 +86,7 @@ struct PlayerPanelView: View {
 
     private var fullBody: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 손패 구슬 + 총 개수(N/최대)
+            // 손패 룬 + 총 개수(N/최대)
             HStack(spacing: 6) {
                 ForEach(BALL_COLORS, id: \.self) { bc in
                     let n = p.balls[bc] ?? 0
@@ -97,7 +97,7 @@ struct PlayerPanelView: View {
                 VStack(spacing: 0) {
                     Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
                         .font(.subheadline.weight(.black)).foregroundStyle(.white)
-                    Text("공").font(.system(size: 9)).foregroundStyle(Theme.textDim)
+                    Text("룬").font(.system(size: 9)).foregroundStyle(Theme.textDim)
                 }
             }
             // 보너스(획득 카드 컬러)
