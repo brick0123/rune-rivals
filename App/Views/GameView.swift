@@ -77,7 +77,7 @@ struct GameView: View {
                     bottom
                 }
             }
-            .frame(width: 330)
+            .frame(width: 370)
         }
         .padding(.horizontal, 10).padding(.vertical, 4)
         // 왼쪽만 화면 끝까지 확장. 오른쪽은 세이프에어리어 유지(다이나믹 아일랜드가 우측 패널 가리는 것 방지).
@@ -127,7 +127,7 @@ struct GameView: View {
             HStack(spacing: 8) {
                 ForEach(opponentIndices, id: \.self) { i in
                     PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat)
-                        .frame(width: 190)
+                        .frame(width: 250)
                 }
             }
             .padding(.horizontal, 10)

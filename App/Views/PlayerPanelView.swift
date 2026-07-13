@@ -22,7 +22,7 @@ struct PlayerPanelView: View {
                 compactBody
             }
         }
-        .padding(full ? 12 : 8)
+        .padding(full ? 12 : 11)
         .background(isCurrent ? Theme.surfaceHi : Theme.surface, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -34,7 +34,7 @@ struct PlayerPanelView: View {
         HStack(spacing: 6) {
             if isCurrent { Circle().fill(SwiftUI.Color.green).frame(width: 7, height: 7) }
             Text(vm.playerNames[playerIdx])
-                .font(full ? .headline : .caption.weight(.semibold))
+                .font(full ? .headline : .subheadline.weight(.bold))
                 .foregroundStyle(.white)
             Spacer()
             // 가장 먼저 시작한 플레이어 표시(별 왼쪽).
@@ -58,28 +58,28 @@ struct PlayerPanelView: View {
 
     // 상대 요약: 구슬(전 색)·보너스(획득 카드 색)를 항상(0이면 흐리게) 표시 → 내 패널처럼 한눈에 보유 파악.
     private var compactBody: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 8) {
             // 구슬 — 5색 + gold, 0은 흐리게, 우측에 총 개수
-            HStack(spacing: 3) {
+            HStack(spacing: 5) {
                 ForEach(BALL_COLORS, id: \.self) { bc in
                     let n = p.balls[bc] ?? 0
-                    Ball(color: bc, count: n, size: 19).opacity(n > 0 ? 1 : 0.25)
+                    Ball(color: bc, count: n, size: 28).opacity(n > 0 ? 1 : 0.25)
                 }
                 Spacer(minLength: 2)
                 Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
-                    .font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textDim)
+                    .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.textDim)
             }
             // 카드 보너스 — 5색, 0은 흐리게
-            HStack(spacing: 4) {
-                Image(systemName: "rectangle.stack.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
+            HStack(spacing: 6) {
+                Image(systemName: "rectangle.stack.fill").font(.system(size: 12)).foregroundStyle(Theme.textDim)
                 ForEach(COLORS, id: \.self) { c in
                     let n = p.bonus[c] ?? 0
-                    pill(text: "\(n)", color: Theme.color(c)).opacity(n > 0 ? 1 : 0.3)
+                    pill(text: "\(n)", color: Theme.color(c), size: 24).opacity(n > 0 ? 1 : 0.3)
                 }
                 Spacer(minLength: 0)
             }
             // 획득/찜 카드 — 모두 공개(찜 = 주황 테두리)
-            cardsStrip(38)
+            cardsStrip(60)
         }
     }
 
@@ -140,12 +140,12 @@ struct PlayerPanelView: View {
         }
     }
 
-    private func pill(text: String, color: SwiftUI.Color) -> some View {
+    private func pill(text: String, color: SwiftUI.Color, size: CGFloat = 20) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .font(.system(size: size * 0.55, weight: .bold, design: .rounded))
             .foregroundStyle(.white)
-            .frame(minWidth: 20)
-            .padding(.vertical, 2)
+            .frame(minWidth: size)
+            .padding(.vertical, size * 0.1)
             .background(color, in: Capsule())
     }
 }
