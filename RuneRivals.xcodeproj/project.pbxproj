@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXFileReference section */
@@ -11,16 +11,8 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		AA000000000000000000000F /* App */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = App;
-			sourceTree = "<group>";
-		};
-		AA0000000000000000000010 /* RuneRivalsEngine */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Sources/RuneRivalsEngine;
-			sourceTree = "<group>";
-		};
+		AA000000000000000000000F /* App */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = App; sourceTree = "<group>"; };
+		AA0000000000000000000010 /* Sources/RuneRivalsEngine */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Sources/RuneRivalsEngine; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,7 +30,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000000000000000000000F /* App */,
-				AA0000000000000000000010 /* RuneRivalsEngine */,
+				AA0000000000000000000010 /* Sources/RuneRivalsEngine */,
 				AA0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,7 +60,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				AA000000000000000000000F /* App */,
-				AA0000000000000000000010 /* RuneRivalsEngine */,
+				AA0000000000000000000010 /* Sources/RuneRivalsEngine */,
 			);
 			name = RuneRivals;
 			productName = RuneRivals;
@@ -100,7 +92,6 @@
 			);
 			mainGroup = AA0000000000000000000002;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			productRefGroup = AA0000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";

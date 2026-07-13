@@ -19,7 +19,10 @@ struct BallSupplyView: View {
         let picked = vm.pickedCount(c)
         let n = vm.supplyCount(bc)
         return Ball(color: bc, count: n, size: 44, selected: picked > 0, badge: picked)
-            .onTapGesture { vm.tapColor(c) }
+            .onTapGesture {
+                if n > 0 { SoundPlayer.play("pop") }
+                vm.tapColor(c)
+            }
             .opacity(n > 0 ? 1 : 0.35)
     }
 
