@@ -7,6 +7,7 @@ struct GameView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: CardDef?
     @State private var detailReserved = false
+    @State private var detailViewOnly = false
     @State private var showNewGameConfirm = false
 
     /// 하단 상세 패널의 대상 플레이어 = 사람(P0).
@@ -34,7 +35,7 @@ struct GameView: View {
                 }
                 // 카드 상세 — 전체 화면 시트 대신 중앙 플로팅 팝업(뒤 보드가 비쳐 보임, 바깥 탭 시 닫힘).
                 if let card = detail {
-                    CardDetailPopup(vm: vm, card: card, reserved: detailReserved) { detail = nil }
+                    CardDetailPopup(vm: vm, card: card, reserved: detailReserved, viewOnly: detailViewOnly) { detail = nil }
                         .transition(.opacity)
                         .zIndex(1)
                 }
@@ -72,7 +73,9 @@ struct GameView: View {
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(opponentIndices, id: \.self) { i in
-                        PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat)
+                        PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat) { card, _ in
+                            openDetail(card, viewOnly: true)
+                        }
                     }
                     bottom
                 }
@@ -126,8 +129,10 @@ struct GameView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(opponentIndices, id: \.self) { i in
-                    PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat)
-                        .frame(width: 250)
+                    PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat) { card, _ in
+                        openDetail(card, viewOnly: true)
+                    }
+                    .frame(width: 250)
                 }
             }
             .padding(.horizontal, 10)
@@ -138,8 +143,9 @@ struct GameView: View {
 
     private var bottom: some View {
         VStack(spacing: 8) {
-            PlayerPanelView(vm: vm, playerIdx: focusIdx, currentSeat: vm.currentSeat, full: true) { card in
-                openDetail(card, reserved: true)
+            PlayerPanelView(vm: vm, playerIdx: focusIdx, currentSeat: vm.currentSeat, full: true) { card, reserved in
+                let actionable = reserved && vm.isHumanTurn && vm.phase == .main
+                openDetail(card, reserved: reserved, viewOnly: !actionable)
             }
             if vm.isHumanTurn && vm.phase == .main {
                 BallSupplyView(vm: vm)
@@ -150,9 +156,10 @@ struct GameView: View {
         .padding(.bottom, 8)
     }
 
-    private func openDetail(_ card: CardDef, reserved: Bool) {
-        guard vm.isHumanTurn, vm.phase == .main else { return }
+    private func openDetail(_ card: CardDef, reserved: Bool = false, viewOnly: Bool = false) {
+        if !viewOnly { guard vm.isHumanTurn, vm.phase == .main else { return } }
         detailReserved = reserved
+        detailViewOnly = viewOnly
         detail = card
     }
 }
@@ -162,6 +169,8 @@ struct CardDetailPopup: View {
     @Bindable var vm: GameViewModel
     let card: CardDef
     let reserved: Bool
+    /// true 면 액션 버튼(구매/찜/진화) 숨김 = 보기 전용(상대 카드/내 획득 카드).
+    var viewOnly: Bool = false
     let close: () -> Void
     @State private var showReserveConfirm = false
 
@@ -203,7 +212,8 @@ struct CardDetailPopup: View {
                 Text(card.name).font(.headline).foregroundStyle(.white)
                 Text(card.tier.label).font(.caption).foregroundStyle(card.tier.accent)
 
-                // 액션 — 구매/찜/진화 항상 표시. 가능하면 컬러, 불가하면 회색+비활성.
+                // 액션 — 구매/찜/진화. 보기 전용(viewOnly)이면 숨김(상대 카드/내 획득 카드).
+                if !viewOnly {
                 HStack(spacing: 8) {
                     let canBuy = vm.canAcquire(card.id)
                     Button { vm.acquire(card.id); close() } label: {
@@ -234,17 +244,29 @@ struct CardDetailPopup: View {
                     .disabled(!canEvo)
                 }
                 .padding(.top, 2)
+                }
             }
             .padding(16)
             .frame(maxWidth: 340)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.stroke, lineWidth: 1))
+            // 닫기(X) 버튼 — 우상단.
+            .overlay(alignment: .topTrailing) {
+                Button { close() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(Theme.surfaceHi, in: Circle())
+                }
+                .padding(8)
+            }
             .shadow(color: .black.opacity(0.5), radius: 20, y: 8)
             .padding(24)
         }
-        .confirmationDialog("찜코인 없이 가져올까요?", isPresented: $showReserveConfirm, titleVisibility: .visible) {
-            Button("가져오기") { vm.reserve(card.id); close() }
-            Button("취소", role: .cancel) { }
+        .alert("찜코인 없이 가져올까요?", isPresented: $showReserveConfirm) {
+            Button("예") { vm.reserve(card.id); close() }
+            Button("아니요", role: .cancel) { }
         } message: {
             Text(vm.supplyCount(.gold) == 0 ? "남은 찜코인이 없어요." : "구슬이 10개라 찜코인을 받을 수 없어요.")
         }

@@ -8,7 +8,8 @@ struct PlayerPanelView: View {
     /// 현재 턴 좌석. 부모가 값으로 주입 → 턴 변경 시 입력이 바뀌어 패널이 확실히 재렌더된다.
     let currentSeat: Int
     var full: Bool = false
-    var onTapReserved: ((CardDef) -> Void)? = nil
+    /// 카드 탭 콜백 — (카드, 찜 여부). 획득 카드는 reserved=false, 찜 카드는 true.
+    var onTapCard: ((CardDef, _ reserved: Bool) -> Void)? = nil
 
     private var p: PlayerState { vm.state.players[playerIdx] }
     private var isCurrent: Bool { currentSeat == playerIdx && !vm.state.ended }
@@ -113,7 +114,7 @@ struct PlayerPanelView: View {
     }
 
     /// 획득(scored) + 찜(reserved) 카드를 가로로 나열 — 모든 플레이어에게 공개.
-    /// 찜 카드는 주황 테두리 + 손 아이콘으로 구분. onTapReserved 가 있으면(내 패널) 찜 카드 탭 시 상세/획득.
+    /// 찜 카드는 주황 테두리 + 손 아이콘으로 구분. 모든 카드 탭 시 onTapCard 호출(상세보기).
     @ViewBuilder
     private func cardsStrip(_ size: CGFloat) -> some View {
         if !p.scored.isEmpty || !p.reserved.isEmpty {
@@ -121,18 +122,19 @@ struct PlayerPanelView: View {
                 HStack(spacing: 4) {
                     ForEach(p.scored, id: \.self) { id in
                         CardView(card: cardOf(id), width: size)
+                            .onTapGesture { onTapCard?(cardOf(id), false) }
                     }
                     ForEach(p.reserved, id: \.self) { id in
                         let card = cardOf(id)
                         CardView(card: card, width: size,
-                                 dimmed: onTapReserved != nil && !vm.canAcquire(id) && vm.phase == .main)
+                                 dimmed: p.isHuman && !vm.canAcquire(id) && vm.phase == .main)
                             .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(.orange, lineWidth: 2))
                             .overlay(alignment: .topLeading) {
                                 Image(systemName: "hand.raised.fill")
                                     .font(.system(size: max(8, size * 0.2), weight: .bold))
                                     .foregroundStyle(.orange).padding(2)
                             }
-                            .onTapGesture { onTapReserved?(card) }
+                            .onTapGesture { onTapCard?(card, true) }
                     }
                 }
                 .padding(.horizontal, 1)
