@@ -27,6 +27,7 @@ public struct PlayerSnapshot: Codable, Sendable {
     public var balls: [String: Int]
     public var bonus: [String: Int]
     public var reserved: [String]
+    public var blindReserved: [String]
     public var scored: [String]
     public var evolutions: Int
 }
@@ -63,6 +64,7 @@ public struct GameSnapshot: Codable, Sendable {
                 balls: Dictionary(uniqueKeysWithValues: BALL_COLORS.map { ($0.rawValue, p.balls[$0] ?? 0) }),
                 bonus: Dictionary(uniqueKeysWithValues: COLORS.map { ($0.rawValue, p.bonus[$0] ?? 0) }),
                 reserved: p.reserved,
+                blindReserved: Array(p.blindReserved),
                 scored: p.scored,
                 evolutions: p.evolutions
             )
@@ -104,6 +106,7 @@ public extension GameState {
             for bc in BALL_COLORS { p.balls[bc] = ps.balls[bc.rawValue] ?? 0 }
             for c in COLORS { p.bonus[c] = ps.bonus[c.rawValue] ?? 0 }
             p.reserved = ps.reserved
+            p.blindReserved = Set(ps.blindReserved)
             p.scored = ps.scored
             p.evolutions = ps.evolutions
         }

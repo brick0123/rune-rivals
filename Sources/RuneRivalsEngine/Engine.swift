@@ -68,6 +68,7 @@ private func applyReserveBlind(_ s: GameState, _ tier: Int) {
     var deck = s.decks[.stage(tier)] ?? []
     if let id = deck.popLast() {
         p.reserved.append(id)
+        p.blindReserved.insert(id)   // 블라인드 = 상대 비공개
         s.decks[.stage(tier)] = deck
     }
     tryGainMaster(s, p)
@@ -93,6 +94,7 @@ private func applyAcquire(_ s: GameState, _ cardId: String, _ pay: [BallColor: I
     // 출처 제거
     if let ridx = p.reserved.firstIndex(of: cardId) {
         p.reserved.remove(at: ridx)
+        p.blindReserved.remove(cardId)
     } else {
         refillBoard(s, card.tier, cardId)
     }
@@ -124,6 +126,7 @@ public func applyEvolution(_ s: GameState, _ e: Evolution) {
     // target 출처 제거
     if let ridx = p.reserved.firstIndex(of: e.targetId) {
         p.reserved.remove(at: ridx)
+        p.blindReserved.remove(e.targetId)
     } else {
         refillBoard(s, target.tier, e.targetId)
     }

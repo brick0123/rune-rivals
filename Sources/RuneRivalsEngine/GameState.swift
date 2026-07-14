@@ -12,6 +12,8 @@ public final class PlayerState {
     public var bonus: [Color: Int]
     /// 보관(예약) 카드 id. 최대 MAX_RESERVED.
     public var reserved: [String]
+    /// 블라인드(덱에서 안 보고) 찜한 카드 id — 상대에게 앞면 비공개(뒷면=레벨만).
+    public var blindReserved: Set<String> = []
     /// 타일 위 점수 카드 id(진화 시 하위는 제거·상위 추가).
     public var scored: [String]
     /// 진화 횟수(tie-breaker 1순위).
@@ -33,6 +35,7 @@ public final class PlayerState {
         balls = p.balls
         bonus = p.bonus
         reserved = p.reserved
+        blindReserved = p.blindReserved
         scored = p.scored
         evolutions = p.evolutions
     }
