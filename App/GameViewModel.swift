@@ -97,6 +97,11 @@ final class GameViewModel {
     }
     func supplyCount(_ c: BallColor) -> Int { state.supply[c] ?? 0 }
 
+    /// 이 카드가 해당 플레이어의 블라인드 찜인지 — 상대에겐 앞면 비공개(뒷면=레벨만).
+    func isBlindReserved(_ playerIdx: Int, _ cardId: String) -> Bool {
+        state.players[playerIdx].blindReserved.contains(cardId)
+    }
+
     // MARK: - 룬 집기 (탭만으로 0→1→2→0 순환)
 
     /// 이 색이 현재 몇 개 선택됐는지(0/1/2).

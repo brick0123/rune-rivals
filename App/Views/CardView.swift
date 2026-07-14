@@ -68,11 +68,11 @@ struct CardView: View {
         Text(card.name)
             .font(.system(size: width * 0.11, weight: .semibold))
             .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.9), radius: 2)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.vertical, width * 0.04)
-            .background(.black.opacity(0.45))
     }
 
     // 상단: 점수(좌) + 보너스색 점(우)

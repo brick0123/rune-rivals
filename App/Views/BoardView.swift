@@ -5,6 +5,7 @@ import SwiftUI
 struct BoardView: View {
     @Bindable var vm: GameViewModel
     let onTapCard: (CardDef) -> Void
+    @State private var pendingBlindStage: Int?
 
     private let cardW: CGFloat = 96
 
@@ -15,6 +16,15 @@ struct BoardView: View {
             ForEach([3, 2, 1], id: \.self) { tier in
                 stageRow(tier)
             }
+        }
+        .alert("블라인드 찜할까요?",
+               isPresented: Binding(get: { pendingBlindStage != nil },
+                                    set: { if !$0 { pendingBlindStage = nil } }),
+               presenting: pendingBlindStage) { stage in
+            Button("예") { vm.reserveBlind(stage); pendingBlindStage = nil }
+            Button("아니요", role: .cancel) { pendingBlindStage = nil }
+        } message: { _ in
+            Text("덱 맨 위 카드를 안 보고 가져갑니다. 상대는 뒷면(레벨)만 볼 수 있어요.")
         }
     }
 
@@ -64,28 +74,40 @@ struct BoardView: View {
         }
     }
 
+    @ViewBuilder
     private func deckPile(_ tier: Tier) -> some View {
         let stage = stageOf(tier)
         // 단계 덱은 "Lv1/Lv2/Lv3", 전설·희귀 덱은 등급명 그대로.
         let tabLabel = stage > 0 ? "Lv\(stage)" : tier.label
-        return Button {
-            if vm.canReserveBlind(stage) { vm.reserveBlind(stage) }
-        } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: Theme.cardCorner)
-                    .fill(Theme.surfaceHi)
-                    .frame(width: cardW * 0.5, height: cardW / Theme.cardAspect)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(tier.accent.opacity(0.5), lineWidth: 1))
-                VStack(spacing: 2) {
-                    Text(tabLabel).font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
-                    Text("\(vm.deckCount(tier))").font(.system(size: 15, weight: .black, design: .rounded)).foregroundStyle(.white)
-                    if vm.canReserveBlind(stage) {
-                        Image(systemName: "hand.raised.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
-                    }
+        if stage > 0 {
+            // 단계 덱만 블라인드 찜 가능(버튼).
+            let canBlind = vm.canReserveBlind(stage)
+            Button {
+                if canBlind { pendingBlindStage = stage }
+            } label: {
+                deckTab(tier, tabLabel, showHand: canBlind)
+            }
+            .disabled(!canBlind)
+        } else {
+            // 희귀·전설: 찜/블라인드 찜 불가 → 표시 전용(버튼 아님).
+            deckTab(tier, tabLabel, showHand: false)
+        }
+    }
+
+    private func deckTab(_ tier: Tier, _ label: String, showHand: Bool) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Theme.cardCorner)
+                .fill(Theme.surfaceHi)
+                .frame(width: cardW * 0.38, height: cardW / Theme.cardAspect)
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(tier.accent.opacity(0.5), lineWidth: 1))
+            VStack(spacing: 2) {
+                Text(label).font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+                Text("\(vm.deckCount(tier))").font(.system(size: 15, weight: .black, design: .rounded)).foregroundStyle(.white)
+                if showHand {
+                    Image(systemName: "hand.raised.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
                 }
             }
         }
-        .disabled(!vm.canReserveBlind(stage))
     }
 
     private var emptySlot: some View {

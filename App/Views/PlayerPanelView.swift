@@ -10,6 +10,8 @@ struct PlayerPanelView: View {
     var full: Bool = false
     /// 카드 탭 콜백 — (카드, 찜 여부). 획득 카드는 reserved=false, 찜 카드는 true.
     var onTapCard: ((CardDef, _ reserved: Bool) -> Void)? = nil
+    /// 상대의 블라인드 찜(뒷면) 카드 탭 시 — "상대가 볼 수 없음" 안내용.
+    var onTapHidden: (() -> Void)? = nil
 
     private var p: PlayerState { vm.state.players[playerIdx] }
     private var isCurrent: Bool { currentSeat == playerIdx && !vm.state.ended }
@@ -113,33 +115,89 @@ struct PlayerPanelView: View {
         }
     }
 
-    /// 획득(scored) + 찜(reserved) 카드를 가로로 나열 — 모든 플레이어에게 공개.
-    /// 찜 카드는 주황 테두리 + 손 아이콘으로 구분. 모든 카드 탭 시 onTapCard 호출(상세보기).
+    /// 획득 카드를 카드 색(COLORS 순: 빨→초→검→분홍→노랑)으로 그룹핑. 같은 색은 획득 순서 유지.
+    private func scoredByColor() -> [[String]] {
+        var groups: [Color: [String]] = [:]
+        for id in p.scored {
+            let c = cardOf(id).bonus.keys.first ?? .red
+            groups[c, default: []].append(id)
+        }
+        return COLORS.compactMap { groups[$0] }.filter { !$0.isEmpty }
+    }
+
+    /// 같은 색 획득 카드 한 컬럼 — 세로로 부분 포갬(위 카드가 아래로 겹쳐 최신이 앞·아래, 이전 카드 상단만 보임).
+    private func scoredColumn(_ group: [String], _ size: CGFloat) -> some View {
+        let cardH = size / Theme.cardAspect
+        let off = cardH * 0.24
+        return ZStack(alignment: .top) {
+            ForEach(Array(group.enumerated()), id: \.element) { idx, id in
+                CardView(card: cardOf(id), width: size)
+                    .onTapGesture { onTapCard?(cardOf(id), false) }
+                    .offset(y: CGFloat(idx) * off)
+                    .zIndex(Double(idx))
+            }
+        }
+        .frame(width: size, height: cardH + CGFloat(max(0, group.count - 1)) * off, alignment: .top)
+    }
+
+    /// 획득(scored, 별도 줄·색 정렬·포갬) + 찜(reserved, 별도 줄) 카드 — 모든 플레이어에게 공개.
     @ViewBuilder
     private func cardsStrip(_ size: CGFloat) -> some View {
-        if !p.scored.isEmpty || !p.reserved.isEmpty {
+        // 획득 카드 줄 — 카드 색(COLORS) 순 정렬, 같은 색은 세로로 부분 포갬.
+        if !p.scored.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(p.scored, id: \.self) { id in
-                        CardView(card: cardOf(id), width: size)
-                            .onTapGesture { onTapCard?(cardOf(id), false) }
-                    }
-                    ForEach(p.reserved, id: \.self) { id in
-                        let card = cardOf(id)
-                        CardView(card: card, width: size,
-                                 dimmed: p.isHuman && !vm.canAcquire(id) && vm.phase == .main)
-                            .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(.orange, lineWidth: 2))
-                            .overlay(alignment: .topLeading) {
-                                Image(systemName: "hand.raised.fill")
-                                    .font(.system(size: max(8, size * 0.2), weight: .bold))
-                                    .foregroundStyle(.orange).padding(2)
-                            }
-                            .onTapGesture { onTapCard?(card, true) }
+                HStack(alignment: .top, spacing: 4) {
+                    ForEach(Array(scoredByColor().enumerated()), id: \.offset) { _, group in
+                        scoredColumn(group, size)
                     }
                 }
                 .padding(.horizontal, 1)
             }
         }
+        // 찜 카드 줄 — 별도 행(주황 표시). 상대의 블라인드 찜은 뒷면(레벨)만.
+        if !p.reserved.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(p.reserved, id: \.self) { id in
+                        let card = cardOf(id)
+                        if !p.isHuman && vm.isBlindReserved(p.id, id) {
+                            faceDownReserved(card.tier, size)
+                                .onTapGesture { onTapHidden?() }
+                        } else {
+                            CardView(card: card, width: size,
+                                     dimmed: p.isHuman && !vm.canAcquire(id) && vm.phase == .main)
+                                .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(.orange, lineWidth: 2))
+                                .overlay(alignment: .topLeading) {
+                                    Image(systemName: "hand.raised.fill")
+                                        .font(.system(size: max(8, size * 0.2), weight: .bold))
+                                        .foregroundStyle(.orange).padding(2)
+                                }
+                                .onTapGesture { onTapCard?(card, true) }
+                        }
+                    }
+                }
+                .padding(.horizontal, 1)
+            }
+        }
+    }
+
+    /// 상대 블라인드 찜 카드의 뒷면 — 레벨(tier)만 노출, 앞면 비공개.
+    private func faceDownReserved(_ tier: Tier, _ size: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: Theme.cardCorner)
+            .fill(Theme.surfaceHi)
+            .frame(width: size, height: size / Theme.cardAspect)
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(tier.accent.opacity(0.7), lineWidth: 2))
+            .overlay {
+                VStack(spacing: 2) {
+                    Image(systemName: "eye.slash.fill").font(.system(size: size * 0.22)).foregroundStyle(Theme.textDim)
+                    Text(tier.label).font(.system(size: size * 0.16, weight: .bold)).foregroundStyle(.white)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                Image(systemName: "hand.raised.fill")
+                    .font(.system(size: max(8, size * 0.2), weight: .bold))
+                    .foregroundStyle(.orange).padding(2)
+            }
     }
 
     private func pill(text: String, color: SwiftUI.Color, size: CGFloat = 20) -> some View {

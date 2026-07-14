@@ -9,6 +9,7 @@ struct GameView: View {
     @State private var detailReserved = false
     @State private var detailViewOnly = false
     @State private var showNewGameConfirm = false
+    @State private var showBlindNotice = false
 
     /// 하단 상세 패널의 대상 플레이어 = 사람(P0).
     private var focusIdx: Int { 0 }
@@ -42,6 +43,7 @@ struct GameView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear { SoundPlayer.preload("pop") }   // 룬 클릭음 미리 로드(첫 탭 지연 방지)
         .animation(.easeInOut(duration: 0.15), value: detail)
         .animation(.easeInOut, value: vm.phase)
         .confirmationDialog("새 게임을 시작할까요?", isPresented: $showNewGameConfirm, titleVisibility: .visible) {
@@ -49,6 +51,11 @@ struct GameView: View {
             Button("취소", role: .cancel) { }
         } message: {
             Text("현재 게임이 초기화됩니다.")
+        }
+        .alert("상대의 블라인드 찜", isPresented: $showBlindNotice) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text("블라인드 찜한 카드는 상대가 볼 수 없어요.")
         }
     }
 
@@ -73,9 +80,9 @@ struct GameView: View {
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(opponentIndices, id: \.self) { i in
-                        PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat) { card, _ in
-                            openDetail(card, viewOnly: true)
-                        }
+                        PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat,
+                                        onTapCard: { card, _ in openDetail(card, viewOnly: true) },
+                                        onTapHidden: { showBlindNotice = true })
                     }
                     bottom
                 }
@@ -129,9 +136,9 @@ struct GameView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(opponentIndices, id: \.self) { i in
-                    PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat) { card, _ in
-                        openDetail(card, viewOnly: true)
-                    }
+                    PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat,
+                                    onTapCard: { card, _ in openDetail(card, viewOnly: true) },
+                                    onTapHidden: { showBlindNotice = true })
                     .frame(width: 250)
                 }
             }
@@ -176,6 +183,11 @@ struct CardDetailPopup: View {
     @State private var showBuyConfirm = false
     /// 이 카드 구매 시 사용되는 마스터 룬(gold) 개수.
     private var goldForBuy: Int { computePay(vm.currentPlayer, card)?[.gold] ?? 0 }
+    /// 진화 대상 카드 정의(romanized 로 조회) — 레벨/점수 표시용.
+    private var evolvedCard: CardDef? {
+        guard let rom = card.evolvesTo else { return nil }
+        return CARDS.first { $0.romanized == rom }
+    }
 
     // 진화 안내 — 카드 우측 여백. 진화 후 모습 + 진화에 필요한 보너스(evoCost).
     private var evolutionColumn: some View {
@@ -188,6 +200,11 @@ struct CardDetailPopup: View {
                 .background(Theme.surfaceHi)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(SwiftUI.Color.cyan, lineWidth: 1.5))
+            // 진화 대상: 레벨 + 점수
+            if let t = evolvedCard {
+                Text("\(t.tier.label) · \(t.points)점")
+                    .font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
+            }
             if let evo = card.evoCost, evo.values.contains(where: { $0 > 0 }) {
                 Text("진화 조건").font(.system(size: 9)).foregroundStyle(Theme.textDim)
                 VStack(spacing: 3) {
@@ -213,7 +230,9 @@ struct CardDetailPopup: View {
                     if card.evolvesTo != nil { evolutionColumn }
                 }
                 Text(card.name).font(.headline).foregroundStyle(.white)
-                Text(card.tier.label).font(.caption).foregroundStyle(card.tier.accent)
+                // 현재 카드: 레벨 + 점수
+                Text("\(card.tier.label) · \(card.points)점")
+                    .font(.caption.weight(.bold)).foregroundStyle(card.tier.accent)
 
                 // 액션 — 구매/찜/진화. 보기 전용(viewOnly)이면 숨김(상대 카드/내 획득 카드).
                 if !viewOnly {
