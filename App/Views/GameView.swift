@@ -189,24 +189,37 @@ struct CardDetailPopup: View {
         return CARDS.first { $0.romanized == rom }
     }
 
+    private func evolutionPreview(_ target: CardDef) -> some View {
+        let base = target.bonus.keys.first.map { Theme.color($0) } ?? SwiftUI.Color.gray
+        return ZStack {
+            LinearGradient(
+                colors: [base.opacity(0.95), base.opacity(0.5)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            Image(target.romanized)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 72, height: 72)
+        }
+        .frame(width: 72, height: 72)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(SwiftUI.Color.cyan, lineWidth: 1.5))
+    }
+
     // 진화 안내 — 카드 우측 여백. 진화 후 모습 + 진화에 필요한 보너스(evoCost).
     private var evolutionColumn: some View {
         VStack(spacing: 6) {
             Text("진화").font(.caption2.weight(.bold)).foregroundStyle(.cyan)
             Image(systemName: "arrow.up").font(.system(size: 18, weight: .black)).foregroundStyle(.cyan)
-            Image(card.evolvesTo ?? "")
-                .resizable().scaledToFit()
-                .frame(width: 72, height: 72)
-                .background(Theme.surfaceHi)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(SwiftUI.Color.cyan, lineWidth: 1.5))
             // 진화 대상: 레벨 + 점수
             if let t = evolvedCard {
+                evolutionPreview(t)
                 Text("\(t.tier.label) · \(t.points)점")
                     .font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
             }
             if let evo = card.evoCost, evo.values.contains(where: { $0 > 0 }) {
-                Text("진화 조건").font(.system(size: 9)).foregroundStyle(Theme.textDim)
+                Text("진화 카드 조건").font(.system(size: 9)).foregroundStyle(Theme.textDim)
                 VStack(spacing: 3) {
                     ForEach(COLORS.filter { (evo[$0] ?? 0) > 0 }, id: \.self) { c in
                         CostPip(color: c, count: evo[c] ?? 0, size: 20)

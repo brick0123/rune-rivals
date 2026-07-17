@@ -12,6 +12,7 @@ struct PlayerPanelView: View {
     var onTapCard: ((CardDef, _ reserved: Bool) -> Void)? = nil
     /// 상대의 블라인드 찜(뒷면) 카드 탭 시 — "상대가 볼 수 없음" 안내용.
     var onTapHidden: (() -> Void)? = nil
+    @State private var inventoryInfo: InventoryInfoKind?
 
     private var p: PlayerState { vm.state.players[playerIdx] }
     private var isCurrent: Bool { currentSeat == playerIdx && !vm.state.ended }
@@ -31,6 +32,13 @@ struct PlayerPanelView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isCurrent ? SwiftUI.Color.green : .clear, lineWidth: 2)
         )
+        .alert(item: $inventoryInfo) { info in
+            Alert(
+                title: Text(info.title),
+                message: Text(info.message),
+                dismissButton: .default(Text("확인"))
+            )
+        }
     }
 
     private var header: some View {
@@ -59,57 +67,108 @@ struct PlayerPanelView: View {
         }
     }
 
-    // 상대 요약: 룬(전 색)·보너스(획득 카드 색)를 항상(0이면 흐리게) 표시 → 내 패널처럼 한눈에 보유 파악.
-    private var compactBody: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 룬 — 5색 + gold, 0은 흐리게, 우측에 총 개수
+    /// 색별 총 구매력 = 보유 룬(코인) + 카드 보너스.
+    private func combinedCount(_ bc: BallColor) -> Int {
+        (p.balls[bc] ?? 0) + (bc.asColor.flatMap { p.bonus[$0] } ?? 0)
+    }
+
+    private func infoButton<Content: View>(
+        _ kind: InventoryInfoKind,
+        width: CGFloat,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        Button { inventoryInfo = kind } label: {
+            content()
+                .frame(width: width, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(kind.title))
+    }
+
+    private var combinedIcon: some View {
+        HStack(spacing: 3) {
+            cardIcon(width: 10, height: 13)
+            Image(systemName: "plus")
+                .font(.system(size: 5, weight: .black))
+                .foregroundStyle(Theme.textDim)
+            runeIcon(size: 12)
+        }
+    }
+
+    private func runeIcon(size: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .stroke(Theme.textDim, lineWidth: max(1.2, size * 0.12))
+            RuneInventoryMark()
+                .fill(Theme.textDim)
+                .padding(size * 0.25)
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func cardIcon(width: CGFloat, height: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: width * 0.2)
+                .stroke(Theme.textDim, lineWidth: max(1.2, width * 0.12))
+            VStack(alignment: .leading, spacing: height * 0.18) {
+                Capsule().fill(Theme.textDim).frame(width: width * 0.5, height: max(1.2, height * 0.08))
+                Capsule().fill(Theme.textDim).frame(width: width * 0.34, height: max(1.2, height * 0.08))
+            }
+        }
+        .frame(width: width, height: height)
+    }
+
+    private var cardCountBadge: some View {
+        HStack(spacing: 3) {
+            cardIcon(width: 10, height: 13)
+            Text("\(p.scored.count)")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+        }
+        .foregroundStyle(Theme.textDim)
+        .accessibilityLabel(Text("카드 \(p.scored.count)장"))
+    }
+
+    /// 위: 룬+카드 합계(색별 총 구매력) / 아래: 코인(룬) 현황 + 손 룬 총개수.
+    private func runeRows(_ ballSize: CGFloat) -> some View {
+        let heldBallSize = max(22, ballSize * 0.88)
+        return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 5) {
+                infoButton(.combined, width: 32) { combinedIcon }
                 ForEach(BALL_COLORS, id: \.self) { bc in
-                    let n = p.balls[bc] ?? 0
-                    Ball(color: bc, count: n, size: 28).opacity(n > 0 ? 1 : 0.25)
+                    let n = combinedCount(bc)
+                    Ball(color: bc, count: n, size: ballSize).opacity(n > 0 ? 1 : 0.25)
                 }
                 Spacer(minLength: 2)
-                Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
-                    .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.textDim)
             }
-            // 카드 보너스 — 5색, 0은 흐리게
-            HStack(spacing: 6) {
-                Image(systemName: "rectangle.stack.fill").font(.system(size: 12)).foregroundStyle(Theme.textDim)
-                ForEach(COLORS, id: \.self) { c in
-                    let n = p.bonus[c] ?? 0
-                    pill(text: "\(n)", color: Theme.color(c), size: 24).opacity(n > 0 ? 1 : 0.3)
+            HStack(spacing: 5) {
+                infoButton(.runes, width: 32) { runeIcon(size: 14) }
+                ForEach(BALL_COLORS, id: \.self) { bc in
+                    let n = p.balls[bc] ?? 0
+                    Ball(color: bc, count: n, size: heldBallSize, style: .coinRim).opacity(n > 0 ? 1 : 0.25)
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 2)
+                HStack(spacing: 6) {
+                    cardCountBadge
+                    Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(Theme.textDim)
             }
-            // 획득/찜 카드 — 모두 공개(찜 = 주황 테두리)
+        }
+    }
+
+    // 상대 요약: 룬+카드 합계 / 코인 현황 / 획득·찜 카드.
+    private var compactBody: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            runeRows(28)
             cardsStrip(60)
         }
     }
 
     private var fullBody: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 손패 룬 + 총 개수(N/최대)
-            HStack(spacing: 6) {
-                ForEach(BALL_COLORS, id: \.self) { bc in
-                    let n = p.balls[bc] ?? 0
-                    Ball(color: bc, count: n, size: 30)
-                        .opacity(n > 0 ? 1 : 0.28)
-                }
-                Spacer(minLength: 4)
-                VStack(spacing: 0) {
-                    Text("\(handBallCount(p))/\(MAX_BALLS_IN_HAND)")
-                        .font(.subheadline.weight(.black)).foregroundStyle(.white)
-                    Text("룬").font(.system(size: 9)).foregroundStyle(Theme.textDim)
-                }
-            }
-            // 보너스(획득 카드 컬러)
-            HStack(spacing: 6) {
-                Text("보너스").font(.caption2).foregroundStyle(Theme.textDim)
-                ForEach(COLORS, id: \.self) { c in
-                    let n = p.bonus[c] ?? 0
-                    pill(text: "\(n)", color: Theme.color(c)).opacity(n > 0 ? 1 : 0.3)
-                }
-            }
+            runeRows(30)
             // 카드(획득 + 찜) — 모두 공개. 찜 = 주황 테두리, 탭하면 상세/획득.
             cardsStrip(52)
         }
@@ -199,13 +258,66 @@ struct PlayerPanelView: View {
                     .foregroundStyle(.orange).padding(2)
             }
     }
+}
 
-    private func pill(text: String, color: SwiftUI.Color, size: CGFloat = 20) -> some View {
-        Text(text)
-            .font(.system(size: size * 0.55, weight: .bold, design: .rounded))
-            .foregroundStyle(.white)
-            .frame(minWidth: size)
-            .padding(.vertical, size * 0.1)
-            .background(color, in: Capsule())
+private enum InventoryInfoKind: Identifiable {
+    case combined
+    case runes
+
+    var id: String {
+        switch self {
+        case .combined: return "combined"
+        case .runes: return "runes"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .combined: return "카드 + 룬 합계"
+        case .runes: return "보유 룬"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .combined:
+            return "색별 구매력입니다. 획득한 카드 보너스와 손에 든 룬을 합쳐 보여줍니다."
+        case .runes:
+            return "현재 손에 들고 있는 룬 개수입니다. 오른쪽의 카드 아이콘 숫자는 획득한 카드 수입니다."
+        }
+    }
+}
+
+private struct RuneInventoryMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        let x = rect.minX
+        let y = rect.minY
+
+        var path = Path()
+        path.move(to: CGPoint(x: x + w * 0.5, y: y + h * 0.0))
+        path.addCurve(
+            to: CGPoint(x: x + w, y: y + h * 0.5),
+            control1: CGPoint(x: x + w * 0.56, y: y + h * 0.28),
+            control2: CGPoint(x: x + w * 0.72, y: y + h * 0.44)
+        )
+        path.addCurve(
+            to: CGPoint(x: x + w * 0.5, y: y + h),
+            control1: CGPoint(x: x + w * 0.72, y: y + h * 0.56),
+            control2: CGPoint(x: x + w * 0.56, y: y + h * 0.72)
+        )
+        path.addCurve(
+            to: CGPoint(x: x, y: y + h * 0.5),
+            control1: CGPoint(x: x + w * 0.44, y: y + h * 0.72),
+            control2: CGPoint(x: x + w * 0.28, y: y + h * 0.56)
+        )
+        path.addCurve(
+            to: CGPoint(x: x + w * 0.5, y: y + h * 0.0),
+            control1: CGPoint(x: x + w * 0.28, y: y + h * 0.44),
+            control2: CGPoint(x: x + w * 0.44, y: y + h * 0.28)
+        )
+        path.closeSubpath()
+        return path
     }
 }
