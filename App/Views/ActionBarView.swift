@@ -29,7 +29,7 @@ struct ActionBarView: View {
             } else {
                 HStack(spacing: 5) {
                     ForEach(Array(vm.pickedList.enumerated()), id: \.offset) { _, c in
-                        Ball(color: BallColor(rawValue: c.rawValue)!, size: 26)
+                        Ball(color: BallColor(rawValue: c.rawValue)!, size: 26, style: .coinRim)
                     }
                 }
                 Spacer()

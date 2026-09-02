@@ -43,7 +43,7 @@ struct GameView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear { SoundPlayer.preload("pop") }   // 룬 클릭음 미리 로드(첫 탭 지연 방지)
+        .onAppear { SoundPlayer.preload("pop"); SoundPlayer.preload("warn") }   // 클릭음·경고음 미리 로드
         .animation(.easeInOut(duration: 0.15), value: detail)
         .animation(.easeInOut, value: vm.phase)
         .confirmationDialog("새 게임을 시작할까요?", isPresented: $showNewGameConfirm, titleVisibility: .visible) {
@@ -82,12 +82,12 @@ struct GameView: View {
                     ForEach(opponentIndices, id: \.self) { i in
                         PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat,
                                         onTapCard: { card, _ in openDetail(card, viewOnly: true) },
-                                        onTapHidden: { showBlindNotice = true })
+                                        onTapHidden: { SoundPlayer.play("pop"); showBlindNotice = true })
                     }
                     bottom
                 }
             }
-            .frame(width: 370)
+            .frame(width: 340)
         }
         .padding(.horizontal, 10).padding(.vertical, 4)
         // 왼쪽만 화면 끝까지 확장. 오른쪽은 세이프에어리어 유지(다이나믹 아일랜드가 우측 패널 가리는 것 방지).
@@ -138,7 +138,7 @@ struct GameView: View {
                 ForEach(opponentIndices, id: \.self) { i in
                     PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat,
                                     onTapCard: { card, _ in openDetail(card, viewOnly: true) },
-                                    onTapHidden: { showBlindNotice = true })
+                                    onTapHidden: { SoundPlayer.play("pop"); showBlindNotice = true })
                     .frame(width: 250)
                 }
             }
@@ -151,7 +151,10 @@ struct GameView: View {
     private var bottom: some View {
         VStack(spacing: 8) {
             PlayerPanelView(vm: vm, playerIdx: focusIdx, currentSeat: vm.currentSeat, full: true) { card, reserved in
-                let actionable = reserved && vm.isHumanTurn && vm.phase == .main
+                let actionable = reserved && vm.isHumanTurn && (
+                    vm.phase == .main ||
+                    (vm.phase == .evolve && vm.canEvolveInto(card.id))
+                )
                 openDetail(card, reserved: reserved, viewOnly: !actionable)
             }
             if vm.isHumanTurn && vm.phase == .main {
@@ -164,7 +167,18 @@ struct GameView: View {
     }
 
     private func openDetail(_ card: CardDef, reserved: Bool = false, viewOnly: Bool = false) {
-        if !viewOnly { guard vm.isHumanTurn, vm.phase == .main else { return } }
+        SoundPlayer.play("pop")   // 카드 클릭 효과음(칩과 동일)
+        if !viewOnly {
+            guard vm.isHumanTurn else { return }
+            switch vm.phase {
+            case .main:
+                break
+            case .evolve where vm.canEvolveInto(card.id):
+                break
+            default:
+                return
+            }
+        }
         detailReserved = reserved
         detailViewOnly = viewOnly
         detail = card

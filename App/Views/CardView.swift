@@ -9,8 +9,11 @@ struct CardView: View {
     var dimmed: Bool = false
     /// 지금(내 턴) 이 카드로 진화 가능 → 청록 글로우 강조.
     var evolveReady: Bool = false
+    @State private var evolveFloat = false
 
     private var height: CGFloat { width / Theme.cardAspect }
+    private var hoverDistance: CGFloat { max(3, width * 0.045) }
+    private var evolveGlowOpacity: Double { evolveFloat ? 0.95 : 0.45 }
 
     var body: some View {
         ZStack {
@@ -35,10 +38,28 @@ struct CardView: View {
         // 지금 진화 가능하면 청록 글로우로 강조.
         .overlay(
             RoundedRectangle(cornerRadius: Theme.cardCorner)
-                .stroke(evolveReady ? SwiftUI.Color.cyan : .clear, lineWidth: 3)
+                .stroke(evolveReady ? SwiftUI.Color.cyan.opacity(evolveGlowOpacity) : .clear, lineWidth: 3)
         )
-        .shadow(color: evolveReady ? SwiftUI.Color.cyan.opacity(0.7) : .clear, radius: evolveReady ? 7 : 0)
-        .opacity(dimmed ? 0.45 : 1)
+        .shadow(
+            color: evolveReady ? SwiftUI.Color.cyan.opacity(0.45 + evolveGlowOpacity * 0.25) : .clear,
+            radius: evolveReady ? (evolveFloat ? 10 : 5) : 0
+        )
+        .offset(y: evolveReady ? (evolveFloat ? -hoverDistance : hoverDistance) : 0)
+        .padding(.vertical, evolveReady ? hoverDistance + 3 : 0)
+        .onAppear { updateEvolveAnimation() }
+        .onChange(of: evolveReady) { _, _ in updateEvolveAnimation() }
+        .opacity(dimmed ? 0.6 : 1)
+    }
+
+    private func updateEvolveAnimation() {
+        guard evolveReady else {
+            evolveFloat = false
+            return
+        }
+        evolveFloat = false
+        withAnimation(.easeInOut(duration: 1.05).repeatForever(autoreverses: true)) {
+            evolveFloat = true
+        }
     }
 
     /// 이 카드가 제공하는 보너스 색(카드 디자인의 기준색).

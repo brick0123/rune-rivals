@@ -34,9 +34,9 @@ final class GameViewModel {
     /// VM 의 저장 프로퍼티로 노출 → 턴이 바뀔 때마다(AI→AI 포함) 뷰가 확실히 갱신된다.
     private(set) var currentSeat: Int = 0
     /// 턴당 제한 시간(초).
-    static let turnSeconds = 40
+    static let turnSeconds = 30
     /// 현재 턴 남은 시간(초). 매 턴 turnSeconds 로 리셋, 0 되면 자동 패스.
-    private(set) var secondsLeft = 40
+    private(set) var secondsLeft = 30
     @ObservationIgnored private var timerTask: Task<Void, Never>?
     /// 룬 선택: 색 → 선택 개수(1=서로 다른 색 take3용, 2=같은 색 take2). 탭으로 0→1→2→0 순환.
     private(set) var ballPick: [Color: Int] = [:]
@@ -183,13 +183,21 @@ final class GameViewModel {
 
     /// 카드 상세의 '진화': 이 카드를 대상으로 하는 합법 진화가 있으면 가능(턴당 1회).
     func canEvolveInto(_ cardId: String) -> Bool {
-        guard isHumanTurn, phase == .main, !state.evolvedThisTurn else { return false }
-        return legalEvolutions(state).contains { $0.targetId == cardId }
+        guard isHumanTurn, !state.evolvedThisTurn else { return false }
+        switch phase {
+        case .main:
+            return legalEvolutions(state).contains { $0.targetId == cardId }
+        case .evolve:
+            return pendingEvolutions.contains { $0.targetId == cardId }
+        case .aiThinking, .gameOver:
+            return false
+        }
     }
 
     func evolveInto(_ cardId: String) {
-        guard canEvolveInto(cardId),
-              let e = legalEvolutions(state).first(where: { $0.targetId == cardId }) else { return }
+        guard canEvolveInto(cardId) else { return }
+        let candidates = phase == .evolve ? pendingEvolutions : legalEvolutions(state)
+        guard let e = candidates.first(where: { $0.targetId == cardId }) else { return }
         applyEvolution(state, e)
         lastMessage = "\(cardOf(cardId).name)(으)로 진화!"
         endHumanTurn()
@@ -253,6 +261,8 @@ final class GameViewModel {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self, !Task.isCancelled, !self.state.ended else { return }
                 if self.secondsLeft > 0 { self.secondsLeft -= 1 }
+                // 10초 남으면 경고음(내 턴에만). App/Sounds/warn.mp3 필요.
+                if self.secondsLeft == 10 && self.isHumanTurn { SoundPlayer.play("warn") }
                 if self.secondsLeft <= 0 { self.onTurnTimeout(); return }
             }
         }

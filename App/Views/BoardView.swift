@@ -34,8 +34,13 @@ struct BoardView: View {
                 deckPile(.stage(tier))
                 ForEach(vm.boardSlots(.stage(tier)), id: \.self) { id in
                     let card = cardOf(id)
+                    // 구매 불가(못 사는) 카드는 딤드 — 희귀·전설과 동일 기준.
+                    let dimmed = vm.isHumanTurn && (
+                        (vm.phase == .main && !vm.canAcquire(id)) ||
+                        (vm.phase == .evolve && !vm.canEvolveInto(id))
+                    )
                     CardView(card: card, width: cardW,
-                             dimmed: !(vm.canAcquire(id) || vm.canReserveCard(id) || vm.canEvolveInto(id)) && vm.isHumanTurn && vm.phase == .main,
+                             dimmed: dimmed,
                              evolveReady: vm.canEvolveInto(id))
                         .onTapGesture { onTapCard(card) }
                 }
@@ -67,7 +72,10 @@ struct BoardView: View {
         if let id = vm.boardSlots(tier).first {
             let card = cardOf(id)
             CardView(card: card, width: cardW,
-                     dimmed: !vm.canAcquire(id) && vm.isHumanTurn && vm.phase == .main)
+                     dimmed: vm.isHumanTurn && (
+                        (vm.phase == .main && !vm.canAcquire(id)) ||
+                        vm.phase == .evolve
+                     ))
                 .onTapGesture { onTapCard(card) }
         } else {
             emptySlot
@@ -103,9 +111,15 @@ struct BoardView: View {
             VStack(spacing: 2) {
                 Text(label).font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
                 Text("\(vm.deckCount(tier))").font(.system(size: 15, weight: .black, design: .rounded)).foregroundStyle(.white)
-                if showHand {
-                    Image(systemName: "hand.raised.fill").font(.system(size: 9)).foregroundStyle(Theme.textDim)
-                }
+            }
+        }
+        // 블라인드 찜 가능 표시 — 하단에 크게.
+        .overlay(alignment: .bottom) {
+            if showHand {
+                Image(systemName: "hand.raised.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.textDim)
+                    .padding(.bottom, 4)
             }
         }
     }

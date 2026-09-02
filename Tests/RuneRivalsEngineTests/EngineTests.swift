@@ -92,4 +92,88 @@ final class EngineTests: XCTestCase {
             turns += 1
         }
     }
+
+    func testEvolutionAvailableImmediatelyAfterAcquiredBonusCompletesCondition() throws {
+        let source = try XCTUnwrap(CARDS.first {
+            stageOf($0.tier) == 1 &&
+            ($0.evoCost?[.blue] ?? 0) == 2 &&
+            ($0.bonus[.blue] ?? 0) == 0
+        })
+        let target = try XCTUnwrap(cardsByRomanized(try XCTUnwrap(source.evolvesTo)).first)
+        let bonusCard = try XCTUnwrap(CARDS.first {
+            stageOf($0.tier) == 1 &&
+            ($0.bonus[.blue] ?? 0) == 1 &&
+            $0.id != source.id
+        })
+        let s = focusedState()
+        let p = s.players[0]
+        score(source, for: p)
+        p.bonus[.blue] = 1
+        s.board[bonusCard.tier] = [bonusCard.id]
+        s.board[target.tier] = [target.id]
+
+        XCTAssertTrue(legalEvolutions(s).isEmpty)
+        let pay = try XCTUnwrap(computePay(p, bonusCard))
+        XCTAssertTrue(canApplyMainAction(s, .acquire(cardId: bonusCard.id, pay: pay)))
+
+        applyMainAction(s, .acquire(cardId: bonusCard.id, pay: pay))
+
+        XCTAssertEqual(p.bonus[.blue], 2)
+        XCTAssertTrue(legalEvolutions(s).contains { $0.sourceId == source.id && $0.targetId == target.id })
+    }
+
+    func testEvolutionAvailableWhenMainActionRefillsBoardWithTarget() throws {
+        let source = try XCTUnwrap(CARDS.first { stageOf($0.tier) == 1 && $0.evolvesTo != nil })
+        let target = try XCTUnwrap(cardsByRomanized(try XCTUnwrap(source.evolvesTo)).first)
+        let placeholder = try XCTUnwrap(CARDS.first {
+            $0.tier == target.tier &&
+            $0.romanized != target.romanized
+        })
+        let s = focusedState()
+        let p = s.players[0]
+        score(source, for: p)
+        for (color, count) in try XCTUnwrap(source.evoCost) {
+            p.bonus[color] = max(p.bonus[color] ?? 0, count)
+        }
+        s.board[target.tier] = [placeholder.id]
+        s.decks[target.tier] = [target.id]
+
+        XCTAssertFalse(boardCardIds(s).contains(target.id))
+        XCTAssertTrue(legalEvolutions(s).isEmpty)
+        let pay = try XCTUnwrap(computePay(p, placeholder))
+
+        applyMainAction(s, .acquire(cardId: placeholder.id, pay: pay))
+
+        XCTAssertTrue(boardCardIds(s).contains(target.id))
+        XCTAssertTrue(legalEvolutions(s).contains { $0.sourceId == source.id && $0.targetId == target.id })
+    }
+
+    private func focusedState() -> GameState {
+        let s = createGame(seed: 99, numPlayers: 3, humanIndex: 0)
+        s.currentPlayer = 0
+        s.startingPlayer = 0
+        s.turnOrder = [0, 1, 2]
+        s.triggeredEnd = false
+        s.ended = false
+        s.evolvedThisTurn = false
+        for tier in TIERS {
+            s.board[tier] = []
+            s.decks[tier] = []
+        }
+        let p = s.players[0]
+        p.balls = BALL_COLORS.reduce(into: [:]) { balls, color in balls[color] = 10 }
+        p.bonus = emptyColorMap()
+        p.reserved = []
+        p.blindReserved = []
+        p.scored = []
+        p.evolutions = 0
+        return s
+    }
+
+    private func score(_ card: CardDef, for player: PlayerState) {
+        player.scored.append(card.id)
+        for (color, count) in card.bonus {
+            player.bonus[color, default: 0] += count
+        }
+    }
 }

@@ -223,8 +223,14 @@ struct PlayerPanelView: View {
                             faceDownReserved(card.tier, size)
                                 .onTapGesture { onTapHidden?() }
                         } else {
+                            let canEvolve = p.isHuman && vm.canEvolveInto(id)
+                            let dimmed = p.isHuman && (
+                                (vm.phase == .main && !vm.canAcquire(id) && !canEvolve) ||
+                                (vm.phase == .evolve && !canEvolve)
+                            )
                             CardView(card: card, width: size,
-                                     dimmed: p.isHuman && !vm.canAcquire(id) && vm.phase == .main)
+                                     dimmed: dimmed,
+                                     evolveReady: canEvolve)
                                 .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(.orange, lineWidth: 2))
                                 .overlay(alignment: .topLeading) {
                                     Image(systemName: "hand.raised.fill")
