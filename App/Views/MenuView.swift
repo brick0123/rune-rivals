@@ -1,4 +1,4 @@
-// 시작 메뉴(가로 전용): 좌 브랜딩+캐릭터 / 우 모드+시작. 싱글은 나+AI2(3인) 고정.
+// 시작 메뉴(가로 전용): 좌 히어로(전설 카드 부채꼴 + 룬) / 우 모드·시작. 카드+룬 수집 게임 느낌.
 
 import SwiftUI
 
@@ -11,16 +11,28 @@ struct MenuView: View {
     /// 싱글 기본 인원(나 + AI 2). 최대 3인.
     private let singlePlayers = 3
 
+    /// 히어로에 전시할 전설 카드(부채꼴).
+    private var heroCards: [CardDef] {
+        ["red_nova", "nika", "void_aegis"].compactMap { rom in
+            CARDS.first { $0.romanized == rom }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Theme.bg.ignoresSafeArea()
-                HStack(spacing: 28) {
-                    branding.frame(maxWidth: .infinity)
-                    controls.frame(maxWidth: .infinity)
+                // 은은한 룬 글로우 배경
+                RadialGradient(colors: [SwiftUI.Color(red: 0.30, green: 0.20, blue: 0.55).opacity(0.55), .clear],
+                               center: .init(x: 0.36, y: 0.42), startRadius: 20, endRadius: 460)
+                    .ignoresSafeArea()
+
+                HStack(spacing: 24) {
+                    hero.frame(maxWidth: .infinity)
+                    controls.frame(width: 360)
                 }
-                .padding(.horizontal, 44)
-                .padding(.vertical, 18)
+                .padding(.horizontal, 40)
+                .padding(.vertical, 16)
             }
             .navigationDestination(isPresented: $startSingle) {
                 GameView(vm: GameViewModel(mode: .single, numPlayers: singlePlayers, seed: seed))
@@ -31,27 +43,46 @@ struct MenuView: View {
         }
     }
 
-    // 좌: 타이틀 + 대표 캐릭터
-    private var branding: some View {
+    // 좌: 타이틀 + 전설 카드 부채꼴 + 룬 오브
+    private var hero: some View {
         VStack(spacing: 16) {
-            VStack(spacing: 6) {
+            VStack(spacing: 3) {
                 Text("룬업")
-                    .font(.system(size: 52, weight: .black, design: .rounded))
+                    .font(.system(size: 54, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                 Text("RUNE UP")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .tracking(8)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .tracking(9)
                     .foregroundStyle(Theme.textDim)
             }
-            HStack(spacing: -16) {
-                ForEach(["kai", "flame_rin", "kenny", "night_rune"], id: \.self) { name in
-                    Image(name)
-                        .resizable().scaledToFill()
-                        .frame(width: 62, height: 86)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.15)))
-                        .rotationEffect(.degrees(Double.random(in: -6 ... 6)))
-                }
+            cardFan
+            runeRow
+            Text("룬을 모아 전설의 카드를 얻고 진화시켜라")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.textDim)
+        }
+    }
+
+    // 전설 카드 3장 부채꼴(가운데 정면, 좌우 기울임)
+    private var cardFan: some View {
+        ZStack {
+            ForEach(Array(heroCards.enumerated()), id: \.offset) { i, card in
+                let d = CGFloat(i - 1)
+                CardView(card: card, width: 116)
+                    .rotationEffect(.degrees(Double(d) * 9))
+                    .offset(x: d * 78, y: abs(d) * 8)
+                    .shadow(color: .black.opacity(0.55), radius: 10, y: 6)
+                    .zIndex(d == 0 ? 1 : 0)
+            }
+        }
+        .frame(height: 182)
+    }
+
+    // 룬 오브(코인) 한 줄 — 수집 토큰 느낌
+    private var runeRow: some View {
+        HStack(spacing: 9) {
+            ForEach(BALL_COLORS, id: \.self) { bc in
+                Ball(color: bc, size: 30, style: .coinRim)
             }
         }
     }
@@ -95,7 +126,6 @@ struct MenuView: View {
                 .foregroundStyle(Theme.textDim)
                 .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: 420)
     }
 
     private var modeDesc: String {
