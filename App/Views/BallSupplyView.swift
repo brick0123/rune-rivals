@@ -4,6 +4,7 @@ import SwiftUI
 
 struct BallSupplyView: View {
     @Bindable var vm: GameViewModel
+    @State private var showGoldNotice = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -11,6 +12,11 @@ struct BallSupplyView: View {
                 colorChip(c)
             }
             goldChip
+        }
+        .alert("마스터 룬", isPresented: $showGoldNotice) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text("마스터 룬은 직접 가져올 수 없어요. 카드를 찜(보관)하면 자동으로 1개 얻어요.")
         }
     }
 
@@ -29,6 +35,7 @@ struct BallSupplyView: View {
     private var goldChip: some View {
         Ball(color: .gold, count: vm.supplyCount(.gold), size: 44, selected: false, style: .coinRim)
             .opacity(vm.supplyCount(.gold) > 0 ? 1 : 0.35)
+            .onTapGesture { showGoldNotice = true }
     }
 }
 

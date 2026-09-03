@@ -29,7 +29,7 @@ struct MenuView: View {
 
                 HStack(spacing: 24) {
                     hero.frame(maxWidth: .infinity)
-                    controls.frame(width: 360)
+                    controls.frame(width: 388)
                 }
                 .padding(.horizontal, 40)
                 .padding(.vertical, 16)
@@ -47,12 +47,12 @@ struct MenuView: View {
     private var hero: some View {
         VStack(spacing: 16) {
             VStack(spacing: 3) {
-                Text("룬업")
-                    .font(.system(size: 54, weight: .black, design: .rounded))
+                Text("룬컬렉트")
+                    .font(.system(size: 46, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
-                Text("RUNE UP")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .tracking(9)
+                Text("RUNE COLLECT")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .tracking(6)
                     .foregroundStyle(Theme.textDim)
             }
             cardFan
@@ -94,7 +94,9 @@ struct MenuView: View {
                 pickerBlock(title: "모드") {
                     Picker("", selection: $mode) {
                         ForEach(GameMode.allCases) { Text($0.rawValue).tag($0) }
-                    }.pickerStyle(.segmented)
+                    }
+                    .pickerStyle(.segmented)
+                    .controlSize(.large)
                 }
                 Text(modeDesc)
                     .font(.footnote)
@@ -112,17 +114,18 @@ struct MenuView: View {
                 }
             } label: {
                 Text(startLabel)
-                    .font(.headline)
+                    .font(.title3.weight(.semibold))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 18)
                     .background(mode.isAvailable ? SwiftUI.Color("AccentColor") : Theme.surfaceHi,
-                                in: RoundedRectangle(cornerRadius: 14))
+                                in: RoundedRectangle(cornerRadius: 16))
                     .foregroundStyle(mode.isAvailable ? .white : Theme.textDim)
             }
             .disabled(!mode.isAvailable)
+            .padding(.top, 12)   // 버튼을 살짝 아래로
 
             Text("18점 도달 후 마지막 라운드까지 진행 · 동점 시 진화수 → 카드수")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(Theme.textDim)
                 .multilineTextAlignment(.center)
         }
@@ -146,7 +149,7 @@ struct MenuView: View {
     @ViewBuilder
     private func pickerBlock<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+            Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.white)
             content()
         }
     }

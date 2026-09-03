@@ -304,8 +304,9 @@ final class GameViewModel {
 
     private func runAITurn() {
         Task { @MainActor in
-            // 시각적 텀(생각 중 표시). 계산은 메인 액터에서 동기 수행(엔진은 릴리스 빌드에서 빠름).
-            try? await Task.sleep(nanoseconds: 550_000_000)
+            // 시각적 텀(생각 중 표시) — 5~15초 랜덤으로 여유. 계산 자체는 즉시(딜레이는 타이밍용).
+            let delay = Double.random(in: 5 ... 15)
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard phase == .aiThinking, !state.ended else { return }
             if let pick = chooseStrongTurn(state, aiRng) {
                 let p = state.currentPlayer
