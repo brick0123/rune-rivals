@@ -44,6 +44,7 @@ struct GameView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { SoundPlayer.preload("pop"); SoundPlayer.preload("warn") }   // 클릭음·경고음 미리 로드
+        .onDisappear { SoundPlayer.stop("warn") }   // 게임 화면 나가면 초침 정지
         .animation(.easeInOut(duration: 0.15), value: detail)
         .animation(.easeInOut, value: vm.phase)
         .confirmationDialog("새 게임을 시작할까요?", isPresented: $showNewGameConfirm, titleVisibility: .visible) {

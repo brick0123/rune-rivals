@@ -255,6 +255,7 @@ final class GameViewModel {
     /// 현재 턴 타이머 시작(40초 카운트다운). 매 턴 리셋.
     private func startTurnTimer() {
         timerTask?.cancel()
+        SoundPlayer.stop("warn")   // 이전 턴의 경고음(초침)이 남아있으면 끊기
         secondsLeft = Self.turnSeconds
         timerTask = Task { @MainActor [weak self] in
             while true {
@@ -268,7 +269,7 @@ final class GameViewModel {
         }
     }
 
-    private func stopTimer() { timerTask?.cancel(); timerTask = nil }
+    private func stopTimer() { timerTask?.cancel(); timerTask = nil; SoundPlayer.stop("warn") }
 
     /// 시간 초과: 사람 턴이면 자동 패스(진화 단계면 진화 생략). AI 턴이면 무시(이미 빠르게 진행).
     private func onTurnTimeout() {

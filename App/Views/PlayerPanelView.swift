@@ -230,13 +230,8 @@ struct PlayerPanelView: View {
                             )
                             CardView(card: card, width: size,
                                      dimmed: dimmed,
+                                     reserved: true,
                                      evolveReady: canEvolve)
-                                .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(.orange, lineWidth: 2))
-                                .overlay(alignment: .topLeading) {
-                                    Image(systemName: "hand.raised.fill")
-                                        .font(.system(size: max(8, size * 0.2), weight: .bold))
-                                        .foregroundStyle(.orange).padding(2)
-                                }
                                 .onTapGesture { onTapCard?(card, true) }
                         }
                     }

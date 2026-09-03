@@ -1,4 +1,4 @@
-// 시작 메뉴: 모드(싱글/일반/랭크) 선택. 싱글은 나+AI2(3인) 고정, 온라인은 방에서 인원 결정(최대 3인).
+// 시작 메뉴(가로 전용): 좌 브랜딩+캐릭터 / 우 모드+시작. 싱글은 나+AI2(3인) 고정.
 
 import SwiftUI
 
@@ -15,72 +15,12 @@ struct MenuView: View {
         NavigationStack {
             ZStack {
                 Theme.bg.ignoresSafeArea()
-                VStack(spacing: 28) {
-                    Spacer()
-                    VStack(spacing: 6) {
-                        Text("룬 라이벌즈")
-                            .font(.system(size: 40, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-                        Text("RUNE RIVALS")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .tracking(6)
-                            .foregroundStyle(Theme.textDim)
-                    }
-
-                    // 대표 캐릭터 미리보기
-                    HStack(spacing: -18) {
-                        ForEach(["kai", "flame_rin", "kenny", "night_rune"], id: \.self) { name in
-                            Image(name)
-                                .resizable().scaledToFill()
-                                .frame(width: 66, height: 92)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.15)))
-                                .rotationEffect(.degrees(Double.random(in: -6...6)))
-                        }
-                    }
-                    .padding(.vertical, 6)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        pickerBlock(title: "모드") {
-                            Picker("", selection: $mode) {
-                                ForEach(GameMode.allCases) { Text($0.rawValue).tag($0) }
-                            }.pickerStyle(.segmented)
-                        }
-                        Text(modeDesc)
-                            .font(.footnote)
-                            .foregroundStyle(Theme.textDim)
-                    }
-                    .padding(18)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-                    .padding(.horizontal, 24)
-
-                    Button {
-                        guard mode.isAvailable else { return }
-                        switch mode {
-                        case .single: seed = UInt32.random(in: 1...UInt32.max); startSingle = true
-                        case .casual: openLobby = true
-                        case .ranked: break
-                        }
-                    } label: {
-                        Text(startLabel)
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 15)
-                            .background(mode.isAvailable ? SwiftUI.Color("AccentColor") : Theme.surfaceHi,
-                                        in: RoundedRectangle(cornerRadius: 14))
-                            .foregroundStyle(mode.isAvailable ? .white : Theme.textDim)
-                    }
-                    .disabled(!mode.isAvailable)
-                    .padding(.horizontal, 24)
-
-                    Spacer()
-                    Text("18점 도달 후 마지막 라운드까지 진행 · 동점 시 진화수 → 카드수")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textDim)
-                        .multilineTextAlignment(.center)
-                        .padding(.bottom, 8)
+                HStack(spacing: 28) {
+                    branding.frame(maxWidth: .infinity)
+                    controls.frame(maxWidth: .infinity)
                 }
-                .padding()
+                .padding(.horizontal, 44)
+                .padding(.vertical, 18)
             }
             .navigationDestination(isPresented: $startSingle) {
                 GameView(vm: GameViewModel(mode: .single, numPlayers: singlePlayers, seed: seed))
@@ -89,6 +29,73 @@ struct MenuView: View {
                 OnlineLobbyView(ranked: false)
             }
         }
+    }
+
+    // 좌: 타이틀 + 대표 캐릭터
+    private var branding: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Text("룬업")
+                    .font(.system(size: 52, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                Text("RUNE UP")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .tracking(8)
+                    .foregroundStyle(Theme.textDim)
+            }
+            HStack(spacing: -16) {
+                ForEach(["kai", "flame_rin", "kenny", "night_rune"], id: \.self) { name in
+                    Image(name)
+                        .resizable().scaledToFill()
+                        .frame(width: 62, height: 86)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.15)))
+                        .rotationEffect(.degrees(Double.random(in: -6 ... 6)))
+                }
+            }
+        }
+    }
+
+    // 우: 모드 선택 + 시작 버튼 + 규칙 안내
+    private var controls: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                pickerBlock(title: "모드") {
+                    Picker("", selection: $mode) {
+                        ForEach(GameMode.allCases) { Text($0.rawValue).tag($0) }
+                    }.pickerStyle(.segmented)
+                }
+                Text(modeDesc)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textDim)
+            }
+            .padding(16)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+
+            Button {
+                guard mode.isAvailable else { return }
+                switch mode {
+                case .single: seed = UInt32.random(in: 1 ... UInt32.max); startSingle = true
+                case .casual: openLobby = true
+                case .ranked: break
+                }
+            } label: {
+                Text(startLabel)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(mode.isAvailable ? SwiftUI.Color("AccentColor") : Theme.surfaceHi,
+                                in: RoundedRectangle(cornerRadius: 14))
+                    .foregroundStyle(mode.isAvailable ? .white : Theme.textDim)
+            }
+            .disabled(!mode.isAvailable)
+
+            Text("18점 도달 후 마지막 라운드까지 진행 · 동점 시 진화수 → 카드수")
+                .font(.caption2)
+                .foregroundStyle(Theme.textDim)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: 420)
     }
 
     private var modeDesc: String {

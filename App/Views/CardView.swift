@@ -7,12 +7,14 @@ struct CardView: View {
     var width: CGFloat = 96
     var faceDown: Bool = false
     var dimmed: Bool = false
+    /// 찜(보관) 카드 표시 — 주황 테두리 + 손 아이콘(카드에 밀착).
+    var reserved: Bool = false
     /// 지금(내 턴) 이 카드로 진화 가능 → 청록 글로우 강조.
     var evolveReady: Bool = false
     @State private var evolveFloat = false
 
     private var height: CGFloat { width / Theme.cardAspect }
-    private var hoverDistance: CGFloat { max(3, width * 0.045) }
+    private var hoverDistance: CGFloat { max(4, width * 0.075) }
     private var evolveGlowOpacity: Double { evolveFloat ? 0.95 : 0.45 }
 
     var body: some View {
@@ -35,6 +37,19 @@ struct CardView: View {
             RoundedRectangle(cornerRadius: Theme.cardCorner)
                 .stroke(card.bonus.keys.first.map { Theme.color($0) } ?? .gray, lineWidth: 2)
         )
+        // 찜 표시 — 주황 테두리 + 손 아이콘. 카드 프레임에 밀착(진화 부유 시 함께 이동).
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cardCorner)
+                .stroke(reserved ? SwiftUI.Color.orange : .clear, lineWidth: 2)
+        )
+        .overlay(alignment: .topLeading) {
+            if reserved {
+                Image(systemName: "hand.raised.fill")
+                    .font(.system(size: max(8, width * 0.2), weight: .bold))
+                    .foregroundStyle(.orange)
+                    .padding(width * 0.03)
+            }
+        }
         // 지금 진화 가능하면 청록 글로우로 강조.
         .overlay(
             RoundedRectangle(cornerRadius: Theme.cardCorner)
@@ -57,7 +72,7 @@ struct CardView: View {
             return
         }
         evolveFloat = false
-        withAnimation(.easeInOut(duration: 1.05).repeatForever(autoreverses: true)) {
+        withAnimation(.easeInOut(duration: 1.25).repeatForever(autoreverses: true)) {
             evolveFloat = true
         }
     }

@@ -34,6 +34,12 @@ enum SoundPlayer {
         nextIndex[name] = 0
     }
 
+    /// 해당 이름의 재생 중인 사운드를 모두 정지(예: 턴 종료 시 경고음 끊기).
+    static func stop(_ name: String) {
+        guard let players = pools[name] else { return }
+        for p in players where p.isPlaying { p.stop(); p.currentTime = 0 }
+    }
+
     static func play(_ name: String, ext: String = "mp3", volume: Float = 1.0) {
         if pools[name] == nil { preload(name, ext: ext) }
         guard let players = pools[name], !players.isEmpty else { return }
