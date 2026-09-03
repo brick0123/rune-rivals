@@ -78,15 +78,20 @@ struct GameView: View {
                 boardScroll
             }
             .frame(maxWidth: .infinity)
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(opponentIndices, id: \.self) { i in
-                        PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat,
-                                        onTapCard: { card, _ in openDetail(card, viewOnly: true) },
-                                        onTapHidden: { SoundPlayer.play("pop"); showBlindNotice = true })
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(opponentIndices, id: \.self) { i in
+                            PlayerPanelView(vm: vm, playerIdx: i, currentSeat: vm.currentSeat,
+                                            onTapCard: { card, _ in openDetail(card, viewOnly: true) },
+                                            onTapHidden: { SoundPlayer.play("pop"); showBlindNotice = true })
+                        }
+                        bottom.id("myActions")
                     }
-                    bottom
                 }
+                // 내 차례(메인)가 되면 하단 조작부(룬칩·가져오기)로 자동 스크롤 → 스크롤 없이 바로 조작.
+                .onChange(of: vm.currentSeat) { _, _ in scrollToMyActions(proxy) }
+                .onChange(of: vm.phase) { _, _ in scrollToMyActions(proxy) }
             }
             .frame(width: 340)
         }
@@ -165,6 +170,16 @@ struct GameView: View {
         }
         .padding(.horizontal, 10)
         .padding(.bottom, 8)
+    }
+
+    // 내 차례(메인)면 우측 레일을 하단 조작부로 스크롤. 룬칩이 이때 나타나 높이가 바뀌므로 살짝 지연.
+    private func scrollToMyActions(_ proxy: ScrollViewProxy) {
+        guard vm.isHumanTurn, vm.phase == .main else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                proxy.scrollTo("myActions", anchor: .bottom)
+            }
+        }
     }
 
     private func openDetail(_ card: CardDef, reserved: Bool = false, viewOnly: Bool = false) {

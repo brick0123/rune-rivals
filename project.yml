@@ -22,7 +22,7 @@ targets:
       - path: Sources/RuneRivalsEngine
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.runerivals.app
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.brick0123.runeup
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: 룬업
         ENABLE_PREVIEWS: YES
