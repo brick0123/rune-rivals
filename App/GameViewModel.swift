@@ -18,8 +18,16 @@ enum GameMode: String, CaseIterable, Identifiable {
 enum TurnPhase: Equatable {
     case main         // 메인 액션 대기(사람)
     case evolve       // 메인 액션 후 진화 선택(사람)
-    case aiThinking   // AI 차례
+    case aiThinking   // AI 차례(온라인에선 "상대 턴 대기"로 재사용)
     case gameOver
+}
+
+/// 온라인 대전 컨텍스트. 좌석 0 = 호스트(엔진 권위), 나머지 게스트(스냅샷 렌더 + 액션 전송).
+struct OnlineContext {
+    let client: RelayClient
+    let mySeat: Int
+    let isHost: Bool
+    var seatOn: [Bool]   // 좌석별 접속 여부(호스트가 roster로 갱신, 끊긴 좌석은 턴 스킵)
 }
 
 @MainActor
@@ -47,13 +55,46 @@ final class GameViewModel {
 
     private let aiRng: Rng
 
+    /// 온라인 대전 컨텍스트(nil = 싱글/오프라인).
+    @ObservationIgnored private(set) var online: OnlineContext?
+    @ObservationIgnored private var onlineSeed: UInt32 = 0
+    @ObservationIgnored private var resultPosted = false
+    var isOnline: Bool { online != nil }
+    var mySeat: Int { online?.mySeat ?? 0 }
+
     init(mode: GameMode, numPlayers: Int, seed: UInt32) {
         self.mode = mode
+        self.online = nil
         // 싱글: P0 만 사람, 나머지 AI.
         self.state = createGame(seed: seed, numPlayers: numPlayers, humanIndex: 0)
         self.aiRng = Rng(seed: seed &+ 12321)
         self.playerNames = (0..<numPlayers).map { i in i == 0 ? "나" : "AI \(i)" }
         resolvePhaseForCurrent()
+    }
+
+    /// 온라인 일반전 초기화. 호스트=엔진 실행+시드 생성+브로드캐스트, 게스트=start 대기.
+    init(online client: RelayClient, seat: Int, isHost: Bool, names: [String]) {
+        self.mode = .casual
+        self.playerNames = names.isEmpty ? ["P1"] : names
+        self.aiRng = Rng(seed: 1)   // 온라인엔 미사용
+        let n = (names.isEmpty ? ["P1"] : names).count
+        self.online = OnlineContext(client: client, mySeat: seat, isHost: isHost, seatOn: Array(repeating: true, count: n))
+        if isHost {
+            let seed = UInt32.random(in: 1 ... .max)
+            self.onlineSeed = seed
+            self.state = createGame(seed: seed, numPlayers: n, humanIndex: seat)
+        } else {
+            self.state = createGame(seed: 1, numPlayers: n, humanIndex: seat)   // 임시(호스트 start로 교체)
+        }
+        client.onEvent = { [weak self] ev in
+            MainActor.assumeIsolated { self?.handleOnline(ev) }
+        }
+        if isHost {
+            resolvePhaseForCurrent()        // 첫 스냅샷 브로드캐스트 포함
+        } else {
+            phase = .aiThinking             // 대기
+            client.relay(["k": "ready"])    // 호스트에 현재 스냅샷 요청(첫 동기화, 레이스 방지)
+        }
     }
 
     /// 같은 인원으로 새 게임 시작(새 랜덤 시드 → 새 턴 순서).
@@ -71,7 +112,7 @@ final class GameViewModel {
     var currentPlayer: PlayerState { state.players[state.currentPlayer] }
     var isHumanTurn: Bool {
         if state.ended { return false }
-        return state.currentPlayer == 0
+        return state.currentPlayer == mySeat
     }
     var winner: Int? { state.ended ? winnerId(state) : nil }
     var ranking: [Int] { rankPlayers(state) }
@@ -196,6 +237,16 @@ final class GameViewModel {
 
     func evolveInto(_ cardId: String) {
         guard canEvolveInto(cardId) else { return }
+        if let o = online {
+            if o.isHost {
+                if phase == .evolve { hostApplyEvolve(cardId) } else { hostEvolveDirect(cardId) }
+            } else {
+                var p: [String: Any] = ["k": "action"]
+                if phase == .evolve { p["evolve"] = cardId } else { p["evolveDirect"] = cardId }
+                o.client.relay(p)
+            }
+            return
+        }
         let candidates = phase == .evolve ? pendingEvolutions : legalEvolutions(state)
         guard let e = candidates.first(where: { $0.targetId == cardId }) else { return }
         applyEvolution(state, e)
@@ -214,6 +265,11 @@ final class GameViewModel {
 
     private func performMain(_ action: MainAction) {
         guard isHumanTurn, phase == .main, canApplyMainAction(state, action) else { return }
+        if let o = online {
+            if o.isHost { hostApplyMain(action) }   // 호스트: 로컬 적용 + 브로드캐스트
+            else { sendMainIntent(action) }         // 게스트: 의도만 전송(적용은 호스트)
+            return
+        }
         applyMainAction(state, action)
         publishState()
         ballPick = [:]
@@ -230,6 +286,11 @@ final class GameViewModel {
 
     func applyEvolutionChoice(_ e: Evolution) {
         guard phase == .evolve, canApplyEvolution(state, e) else { return }
+        if let o = online {
+            if o.isHost { hostApplyEvolve(e.targetId) }
+            else { o.client.relay(["k": "action", "evolve": e.targetId]) }
+            return
+        }
         applyEvolution(state, e)
         let t = cardOf(e.targetId)
         lastMessage = "\(t.name)(으)로 진화!"
@@ -238,6 +299,11 @@ final class GameViewModel {
 
     func skipEvolution() {
         guard phase == .evolve else { return }
+        if let o = online {
+            if o.isHost { hostSkipEvolve() }
+            else { o.client.relay(["k": "action", "skip": true]) }
+            return
+        }
         endHumanTurn()
     }
 
@@ -274,6 +340,13 @@ final class GameViewModel {
     /// 시간 초과: 사람 턴이면 자동 패스(진화 단계면 진화 생략). AI 턴이면 무시(이미 빠르게 진행).
     private func onTurnTimeout() {
         guard !state.ended else { return }
+        if let o = online {
+            guard o.isHost else { return }   // 게스트 타이머는 표시용(호스트가 권위 처리)
+            lastMessage = "시간 초과 — 패스"
+            if phase == .evolve { hostSkipEvolve() }
+            else { finishTurn(state); resolvePhaseForCurrent() }
+            return
+        }
         if phase == .evolve {
             lastMessage = "시간 초과 — 진화 생략"
             skipEvolution()
@@ -286,7 +359,32 @@ final class GameViewModel {
     private func resolvePhaseForCurrent() {
         currentSeat = state.currentPlayer
         publishState()
-        if state.ended { phase = .gameOver; stopTimer(); return }
+        if state.ended {
+            phase = .gameOver; stopTimer()
+            if online?.isHost == true { broadcastSnap(); postResult() }
+            return
+        }
+        if let o = online {
+            // 온라인: 호스트만 이 경로로 턴 진행(게스트는 applyOnlineTurnState 로 렌더).
+            guard o.isHost else { return }
+            broadcastSnap()
+            // 끊긴 좌석이면 즉시 스킵(연결된 좌석이 하나도 없으면 대기).
+            if o.seatOn.indices.contains(state.currentPlayer), !o.seatOn[state.currentPlayer] {
+                if o.seatOn.contains(true) {
+                    lastMessage = "\(playerNames[state.currentPlayer]) 이탈 — 스킵"
+                    finishTurn(state); resolvePhaseForCurrent()
+                }
+                return
+            }
+            startTurnTimer()
+            phase = (state.currentPlayer == o.mySeat) ? .main : .aiThinking   // 내 턴 / 상대 턴 대기
+            if phase == .main, legalMainActions(state).isEmpty {
+                lastMessage = "행동 불가 — 패스"
+                finishTurn(state); resolvePhaseForCurrent()
+            }
+            return
+        }
+        // 단일(오프라인)
         startTurnTimer()
         if isHumanTurn {
             phase = .main
@@ -317,6 +415,176 @@ final class GameViewModel {
             }
             resolvePhaseForCurrent()
         }
+    }
+
+    // MARK: - 온라인 (호스트 권위 + 스냅샷 동기화)
+
+    private func handleOnline(_ ev: RelayEvent) {
+        switch ev {
+        case let .relay(fromSeat, payload):
+            handleRelayPayload(fromSeat: fromSeat, payload: payload)
+        case let .roster(entries, _):
+            guard var o = online else { return }
+            var on = Array(repeating: false, count: playerNames.count)
+            for e in entries where e.seat >= 0 && e.seat < on.count { on[e.seat] = e.on }
+            o.seatOn = on
+            online = o
+            // 호스트: 현재 좌석이 방금 끊겼으면 스킵 재평가
+            if o.isHost, !state.ended, o.seatOn.indices.contains(state.currentPlayer),
+               !o.seatOn[state.currentPlayer], o.seatOn.contains(true),
+               (phase == .aiThinking || phase == .main) {
+                finishTurn(state); resolvePhaseForCurrent()
+            }
+        case .closed, .hostLeft, .reconnectFail:
+            if !state.ended { lastMessage = "연결이 끊겼어요" }
+        default:
+            break
+        }
+    }
+
+    private func handleRelayPayload(fromSeat: Int, payload: [String: Any]) {
+        guard let o = online, let k = payload["k"] as? String else { return }
+        if o.isHost {
+            if k == "ready" { broadcastSnap(); return }   // 게스트 첫 동기화 요청
+            guard k == "action" else { return }
+            applyRemoteAction(seat: fromSeat, payload: payload)
+        } else if k == "snap" {
+            if let s = payload["snap"] as? String, let snap = GameSnapshot.decode(Data(s.utf8)) {
+                state.applySnapshot(snap)
+            }
+            let seat = payload["seat"] as? Int ?? state.currentPlayer
+            let ph = payload["phase"] as? String ?? "main"
+            let msg = payload["msg"] as? String ?? ""
+            applyOnlineTurnState(seat: seat, phaseStr: ph, msg: msg)
+        }
+    }
+
+    private func applyRemoteAction(seat: Int, payload: [String: Any]) {
+        guard state.currentPlayer == seat, !state.ended else { return }
+        if let tgt = payload["evolveDirect"] as? String, phase == .main { hostEvolveDirect(tgt); return }
+        if phase == .main, let action = decodeMainIntent(payload) { hostApplyMain(action); return }
+        if phase == .evolve {
+            if let tgt = payload["evolve"] as? String { hostApplyEvolve(tgt) }
+            else if payload["skip"] != nil { hostSkipEvolve() }
+        }
+    }
+
+    private func decodeMainIntent(_ p: [String: Any]) -> MainAction? {
+        if let cols = p["take3"] as? [String] { return .take3(colors: cols.compactMap { Color(rawValue: $0) }) }
+        if let c = p["take2"] as? String, let col = Color(rawValue: c) { return .take2(color: col) }
+        if let id = p["reserve"] as? String { return .reserve(cardId: id) }
+        if let t = p["reserveBlind"] as? Int { return .reserveBlind(tier: t) }
+        if let id = p["acquire"] as? String {
+            guard let pay = computePay(state.players[state.currentPlayer], cardOf(id)) else { return nil }
+            return .acquire(cardId: id, pay: pay)
+        }
+        return nil
+    }
+
+    private func sendMainIntent(_ action: MainAction) {
+        guard let o = online else { return }
+        var p: [String: Any] = ["k": "action"]
+        switch action {
+        case let .take3(colors): p["take3"] = colors.map { $0.rawValue }
+        case let .take2(color): p["take2"] = color.rawValue
+        case let .reserve(id): p["reserve"] = id
+        case let .reserveBlind(t): p["reserveBlind"] = t
+        case let .acquire(id, _): p["acquire"] = id
+        }
+        o.client.relay(p)
+    }
+
+    // 호스트 권위 적용(현재 좌석의 액션 — 내 좌석/게스트 공통 경로).
+    private func hostApplyMain(_ action: MainAction) {
+        guard phase == .main, canApplyMainAction(state, action) else { return }
+        applyMainAction(state, action)
+        ballPick = [:]
+        lastMessage = describe(action)
+        pendingEvolutions = legalEvolutions(state)
+        if pendingEvolutions.isEmpty {
+            finishTurn(state); resolvePhaseForCurrent()
+        } else {
+            phase = .evolve
+            broadcastSnap()   // 진화 단계 진입도 게스트에 알림
+        }
+    }
+    private func hostEvolveDirect(_ targetId: String) {
+        guard phase == .main, !state.evolvedThisTurn,
+              let e = legalEvolutions(state).first(where: { $0.targetId == targetId }) else { return }
+        applyEvolution(state, e)
+        lastMessage = "\(cardOf(targetId).name)(으)로 진화!"
+        finishTurn(state); resolvePhaseForCurrent()
+    }
+    private func hostApplyEvolve(_ targetId: String) {
+        guard phase == .evolve,
+              let e = pendingEvolutions.first(where: { $0.targetId == targetId }) else { return }
+        applyEvolution(state, e)
+        lastMessage = "\(cardOf(targetId).name)(으)로 진화!"
+        pendingEvolutions = []
+        finishTurn(state); resolvePhaseForCurrent()
+    }
+    private func hostSkipEvolve() {
+        guard phase == .evolve else { return }
+        pendingEvolutions = []
+        finishTurn(state); resolvePhaseForCurrent()
+    }
+
+    /// 호스트: 현재 권위 상태를 전원에 브로드캐스트.
+    private func broadcastSnap() {
+        guard let o = online, o.isHost else { return }
+        let snap = GameSnapshot(from: state).toJSONString()
+        let ph = state.ended ? "over" : (phase == .evolve ? "evolve" : "main")
+        o.client.relay(["k": "snap", "snap": snap, "seat": state.currentPlayer, "phase": ph, "msg": lastMessage])
+    }
+
+    /// 게스트: 호스트 스냅샷에 맞춰 턴 상태 반영.
+    private func applyOnlineTurnState(seat: Int, phaseStr: String, msg: String) {
+        currentSeat = seat
+        if !msg.isEmpty { lastMessage = msg }
+        if state.ended || phaseStr == "over" {
+            phase = .gameOver; stopTimer(); publishState(); return
+        }
+        if seat == mySeat {
+            phase = (phaseStr == "evolve") ? .evolve : .main
+            pendingEvolutions = (phase == .evolve) ? legalEvolutions(state) : []
+        } else {
+            phase = .aiThinking   // 상대 턴 대기
+            pendingEvolutions = []
+        }
+        startTurnTimer()
+        publishState()
+    }
+
+    /// 게임 종료 시 호스트만 결과 기록(Supabase 랭킹 + Firebase 히스토리).
+    private func postResult() {
+        guard let o = online, o.isHost, !resultPosted, state.ended else { return }
+        resultPosted = true
+        let ranks = rankPlayers(state)   // 순위순 좌석(1등부터)
+        var results: [[String: Any]] = []
+        for (i, seat) in ranks.enumerated() where seat < state.players.count {
+            let p = state.players[seat]
+            results.append([
+                "seat": seat, "name": playerNames[seat],
+                "points": playerPoints(p), "evolutions": p.evolutions,
+                "cards": p.scored.count, "rank": i + 1, "isAI": false,
+            ])
+        }
+        let body: [String: Any] = [
+            "matchId": UUID().uuidString, "mode": "casual",
+            "seed": Int(onlineSeed), "numPlayers": playerNames.count,
+            "winnerSeat": winnerId(state) ?? ranks.first ?? 0,
+            "results": results,
+        ]
+        let base = RelayConfig.defaultURL.absoluteString
+            .replacingOccurrences(of: "wss://", with: "https://")
+            .replacingOccurrences(of: "ws://", with: "http://")
+        guard let url = URL(string: base + "/result"),
+              let data = try? JSONSerialization.data(withJSONObject: body) else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = data
+        URLSession.shared.dataTask(with: req).resume()
     }
 
     // MARK: - 텍스트

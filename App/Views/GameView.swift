@@ -118,14 +118,17 @@ struct GameView: View {
         }
     }
 
-    // 새 게임(같은 인원, 새 랜덤 시드/순서).
+    // 새 게임(같은 인원, 새 랜덤 시드/순서). 온라인에선 숨김(혼자 리셋 불가).
+    @ViewBuilder
     private var newGameButton: some View {
-        Button { showNewGameConfirm = true } label: {
-            Label("새 게임", systemImage: "arrow.clockwise")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(Theme.surfaceHi, in: Capsule())
+        if !vm.isOnline {
+            Button { showNewGameConfirm = true } label: {
+                Label("새 게임", systemImage: "arrow.clockwise")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Theme.surfaceHi, in: Capsule())
+            }
         }
     }
 

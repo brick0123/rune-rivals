@@ -78,7 +78,7 @@ struct ActionBarView: View {
     private var aiBar: some View {
         HStack(spacing: 10) {
             ProgressView().tint(.white)
-            Text("\(vm.playerNames[vm.state.currentPlayer]) 생각 중…")
+            Text("\(vm.playerNames[vm.state.currentPlayer]) \(vm.isOnline ? "턴" : "생각 중")…")
                 .font(.subheadline).foregroundStyle(.white)
             Spacer()
             if !vm.lastMessage.isEmpty {

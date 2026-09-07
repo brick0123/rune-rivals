@@ -135,6 +135,41 @@ const rooms = new Map();
 const lobbySubs = new Set();
 let codeSeq = 0;
 
+// 매치메이킹 큐(오버워치식 자동 매칭). 유연 2~3인.
+const queue = [];      // { ws, name }
+let matchTimer = null; // 2명 대기 시 8초 후 2인 매칭
+
+function dequeueWs(ws) {
+  const i = queue.findIndex((q) => q.ws === ws);
+  if (i >= 0) queue.splice(i, 1);
+  if (queue.length < 2 && matchTimer) { clearTimeout(matchTimer); matchTimer = null; }
+}
+function startMatch(n) {
+  if (matchTimer) { clearTimeout(matchTimer); matchTimer = null; }
+  const picked = queue.splice(0, n);
+  const code = `m${++codeSeq}`;
+  const r = { code, name: "매칭", members: new Map(), spectators: new Set(), status: "playing", grace: new Map(), hostSeat: 0 };
+  rooms.set(code, r);
+  picked.forEach(({ ws, name }, seat) => {
+    r.members.set(seat, { ws, name, token: randomUUID() });
+    ws.meta = { code, seat, role: seat === 0 ? "host" : "player", name };
+  });
+  for (const [seat, m] of r.members) {
+    send(m.ws, { t: "joined", code, seat, isHost: seat === 0, roster: rosterOf(r), token: m.token, hostSeat: 0 });
+  }
+  pushLobby();
+  console.log(`[relay] match ${code} n=${n}`);
+}
+function tryMatch() {
+  if (queue.length >= MAX_SEATS) { startMatch(MAX_SEATS); return; }
+  if (queue.length >= 2 && !matchTimer) {
+    matchTimer = setTimeout(() => {
+      matchTimer = null;
+      if (queue.length >= 2) startMatch(Math.min(queue.length, MAX_SEATS));
+    }, 8000);
+  }
+}
+
 const send = (ws, obj) => { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj)); };
 const hostOf = (r) => r.members.get(r.hostSeat)?.ws;
 const rosterOf = (r) => [...r.members.entries()].map(([seat, m]) => ({ seat, name: m.name, on: !!m.ws })).sort((a, b) => a.seat - b.seat);
@@ -154,6 +189,20 @@ wss.on("connection", (ws) => {
       case "watch-lobby":
         lobbySubs.add(ws);
         send(ws, { t: "rooms", rooms: roomList() });
+        return;
+
+      case "queue": {
+        if (ws.meta.seat >= 0) return;                 // 이미 방에 있으면 무시
+        if (queue.some((q) => q.ws === ws)) return;     // 중복 방지
+        const name = String(msg.name ?? "플레이어").slice(0, 20);
+        queue.push({ ws, name });
+        send(ws, { t: "queued", size: queue.length });
+        tryMatch();
+        return;
+      }
+
+      case "dequeue":
+        dequeueWs(ws);
         return;
 
       case "create": {
@@ -259,6 +308,7 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     lobbySubs.delete(ws);
+    dequeueWs(ws);
     removeFromRoom(ws, false);
   });
 });

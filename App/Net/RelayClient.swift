@@ -15,6 +15,7 @@ struct RosterEntry: Identifiable, Equatable {
 
 enum RelayEvent {
     case rooms([RoomInfo])
+    case queued(size: Int)
     case joined(code: String, seat: Int, isHost: Bool, roster: [RosterEntry], token: String, hostSeat: Int)
     case spectating(code: String, roster: [RosterEntry], hostSeat: Int)
     case promote(hostSeat: Int, roster: [RosterEntry])
@@ -34,6 +35,7 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
     private var task: URLSessionWebSocketTask?
     private lazy var session = URLSession(configuration: .default, delegate: self, delegateQueue: .main)
     var onEvent: ((RelayEvent) -> Void)?
+    var onOpen: (() -> Void)?
     private(set) var isOpen = false
 
     func connect(_ url: URL) {
@@ -51,7 +53,7 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: URLSessionWebSocketDelegate (nonisolated — 델리게이트 콜백은 메인 액터 밖에서 온다)
     nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol proto: String?) {
-        Task { @MainActor in self.isOpen = true }
+        Task { @MainActor in self.isOpen = true; self.onOpen?() }
     }
     nonisolated func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         let code = closeCode.rawValue
@@ -87,6 +89,9 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: 프로토콜 송신
     func watchLobby() { sendRaw(["t": "watch-lobby"]) }
+    /// 매치메이킹 큐 참가(오버워치식 자동 매칭). 성사되면 .joined 이벤트로 도착.
+    func findMatch(name: String) { sendRaw(["t": "queue", "name": name]) }
+    func cancelMatch() { sendRaw(["t": "dequeue"]) }
     func create(name: String, roomName: String) { sendRaw(["t": "create", "name": name, "roomName": roomName]) }
     func join(code: String, name: String) { sendRaw(["t": "join", "code": code, "name": name]) }
     func spectate(code: String, name: String) { sendRaw(["t": "spectate", "code": code, "name": name]) }
@@ -110,6 +115,8 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
                          players: $0["players"] as? Int ?? 0, max: $0["max"] as? Int ?? 4,
                          status: $0["status"] as? String ?? "waiting", spectators: $0["spectators"] as? Int ?? 0)
             }))
+        case "queued":
+            onEvent?(.queued(size: m["size"] as? Int ?? 0))
         case "joined":
             onEvent?(.joined(code: m["code"] as? String ?? "", seat: m["seat"] as? Int ?? -1,
                              isHost: m["isHost"] as? Bool ?? false, roster: roster(m["roster"]),
