@@ -25,3 +25,7 @@ services:
       # 히스토리/리플레이(Firebase Firestore) — 서비스계정 JSON 원문 또는 base64.
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
+      # 스케일아웃(수평 확장)용 Redis. 미설정이면 메모리 단일모드(1인스턴스)로 동작.
+      # 설정 시 인스턴스를 늘려도(numInstances↑, 유료) 공유상태+pub/sub 로 한 방을 공유.
+      - key: REDIS_URL
+        sync: false
