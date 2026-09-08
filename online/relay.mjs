@@ -16,7 +16,7 @@ import { createBus } from "./lib/bus.mjs";
 
 const PORT = Number(process.env.PORT ?? 5178);
 const MAX_SEATS = 3;
-const GRACE_MS = 30000; // 일시 끊김 시 좌석 유지(재접속 대기) 시간
+const GRACE_MS = 150000; // 일시 끊김 시 좌석 유지(재접속 대기) 시간 — 2.5분(백그라운드 전환·네트워크 blip 대비)
 
 // Supabase(랭킹/집계 DB, Postgres) — 서버에만 키를 둔다. 미설정 시 전적 기능만 비활성(대전엔 영향 없음).
 const SB_URL = process.env.SUPABASE_URL || "";

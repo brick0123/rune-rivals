@@ -61,6 +61,8 @@ final class GameViewModel {
     @ObservationIgnored private var resultPosted = false
     var isOnline: Bool { online != nil }
     var mySeat: Int { online?.mySeat ?? 0 }
+    /// 예기치 않게 끊겨 자동 재접속 중(뷰에 "재접속 중…" 배너 표시).
+    private(set) var reconnecting = false
 
     init(mode: GameMode, numPlayers: Int, seed: UInt32) {
         self.mode = mode
@@ -435,12 +437,33 @@ final class GameViewModel {
                (phase == .aiThinking || phase == .main) {
                 finishTurn(state); resolvePhaseForCurrent()
             }
-        case .closed, .hostLeft, .reconnectFail:
+        case let .joined(_, _, isHost, entries, _, _):
+            // 재접속 성공 → 좌석 상태 갱신 + 최신 게임상태 동기화.
+            reconnecting = false
+            if lastMessage == "재접속 중…" { lastMessage = "" }
+            if var o = online {
+                var on = Array(repeating: false, count: playerNames.count)
+                for e in entries where e.seat >= 0 && e.seat < on.count { on[e.seat] = e.on }
+                o.seatOn = on
+                online = o
+            }
+            if isHost { broadcastSnap() }                 // 호스트: 현재 권위 상태 재전파
+            else { online?.client.relay(["k": "ready"]) }  // 게스트: 최신 스냅 요청
+        case .reconnecting:
+            reconnecting = true
+            if !state.ended { lastMessage = "재접속 중…" }
+        case .reconnectFail:
+            reconnecting = false
+            if !state.ended { lastMessage = "재접속 실패 — 연결이 끊겼어요" }
+        case .closed, .hostLeft:
             if !state.ended { lastMessage = "연결이 끊겼어요" }
         default:
             break
         }
     }
+
+    /// 온라인 게임에서 명시적으로 나가기(좌석 즉시 제거 → 자동 재접속 안 함).
+    func leaveOnline() { online?.client.leave() }
 
     private func handleRelayPayload(fromSeat: Int, payload: [String: Any]) {
         guard let o = online, let k = payload["k"] as? String else { return }

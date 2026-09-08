@@ -10,6 +10,7 @@ struct GameView: View {
     @State private var detailViewOnly = false
     @State private var showNewGameConfirm = false
     @State private var showBlindNotice = false
+    @State private var showLeaveConfirm = false
 
     /// 하단 상세 패널의 대상 플레이어 = 사람(P0).
     private var focusIdx: Int { 0 }
@@ -40,6 +41,7 @@ struct GameView: View {
                         .transition(.opacity)
                         .zIndex(1)
                 }
+                if vm.reconnecting { reconnectBanner }
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -47,6 +49,13 @@ struct GameView: View {
         .onDisappear { SoundPlayer.stop("warn") }   // 게임 화면 나가면 초침 정지
         .animation(.easeInOut(duration: 0.15), value: detail)
         .animation(.easeInOut, value: vm.phase)
+        .animation(.easeInOut, value: vm.reconnecting)
+        .confirmationDialog("게임에서 나갈까요?", isPresented: $showLeaveConfirm, titleVisibility: .visible) {
+            Button("나가기", role: .destructive) { vm.leaveOnline(); dismiss() }
+            Button("취소", role: .cancel) { }
+        } message: {
+            Text("나가면 이 게임에서 빠지고 다시 들어올 수 없어요.")
+        }
         .confirmationDialog("새 게임을 시작할까요?", isPresented: $showNewGameConfirm, titleVisibility: .visible) {
             Button("새 게임", role: .destructive) { vm.newGame() }
             Button("취소", role: .cancel) { }
@@ -109,13 +118,32 @@ struct GameView: View {
 
     // 네비바 제거 후 메뉴 복귀용 컴팩트 버튼(상대 목록 줄에 인라인 배치 → 세로 공간 미소비).
     private var backButton: some View {
-        Button { dismiss() } label: {
+        Button {
+            if vm.isOnline && !vm.state.ended { showLeaveConfirm = true }   // 온라인: 나가기 확인(좌석 이탈)
+            else { dismiss() }
+        } label: {
             Image(systemName: "chevron.left")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
                 .background(Theme.surface, in: Circle())
         }
+    }
+
+    // 예기치 않게 끊겨 자동 재접속 중일 때 상단에 뜨는 배너.
+    private var reconnectBanner: some View {
+        VStack {
+            HStack(spacing: 8) {
+                ProgressView().tint(.white).scaleEffect(0.8)
+                Text("재접속 중…").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 9)
+            .background(.black.opacity(0.78), in: Capsule())
+            .padding(.top, 12)
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .zIndex(2)
     }
 
     // 새 게임(같은 인원, 새 랜덤 시드/순서). 온라인에선 숨김(혼자 리셋 불가).
