@@ -41,6 +41,29 @@ try {
 }
 const fbReady = !!firestore;
 
+// ── 텔레그램 에러 알림 (중요 실패/에러만, 60초 중복제거) ──
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TG_CHAT = process.env.TELEGRAM_CHAT_ID || "";
+const tgReady = !!(TG_TOKEN && TG_CHAT);
+const tgSeen = new Map(); // 메시지 dedup: key -> lastSentMs
+async function notify(msg) {
+  console.error("[alert]", msg);
+  if (!tgReady) return;
+  const key = String(msg).slice(0, 120);
+  const now = Date.now();
+  if (tgSeen.has(key) && now - tgSeen.get(key) < 60000) return; // 같은 알림 60초 억제(스팸 방지)
+  tgSeen.set(key, now);
+  if (tgSeen.size > 300) tgSeen.clear();
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TG_CHAT, text: `🚨 [룬컬렉트 릴레이] ${msg}`.slice(0, 3900), disable_web_page_preview: true }),
+    });
+  } catch (e) { console.error("[tg] send fail", e?.message || e); }
+}
+process.on("uncaughtException", (e) => { notify(`uncaughtException: ${e?.message}\n${String(e?.stack || "").slice(0, 600)}`); });
+process.on("unhandledRejection", (e) => { notify(`unhandledRejection: ${e?.message || e}`); });
+
 // ── 스케일아웃: REDIS_URL 있으면 Redis(공유상태 + pub/sub), 없으면 메모리 단일모드 ──
 const REDIS_URL = process.env.REDIS_URL || "";
 const INSTANCE = randomUUID();
@@ -51,8 +74,8 @@ if (REDIS_URL) {
     const opts = { maxRetriesPerRequest: 3 };
     redis = new IORedis(REDIS_URL, opts);
     subR = new IORedis(REDIS_URL, opts);
-    redis.on("error", (e) => console.error("[redis]", e?.message || e));
-    subR.on("error", (e) => console.error("[redis-sub]", e?.message || e));
+    redis.on("error", (e) => notify(`Redis 오류: ${e?.message || e}`));
+    subR.on("error", (e) => notify(`Redis(sub) 오류: ${e?.message || e}`));
     console.log(`[relay] Redis 스케일아웃 모드 (instance ${INSTANCE.slice(0, 8)})`);
   } catch (e) {
     console.error("[relay] Redis 초기화 실패 → 메모리 모드:", e?.message || e);
@@ -152,6 +175,8 @@ const server = createServer(async (req, res) => {
       // 이중 기록: Supabase(집계) 먼저 → Firestore(히스토리). 하나 실패해도 나머지는 진행.
       const sb = await recordResult(payload);
       const fb = await recordReplay(payload);
+      if (!sb.ok) notify(`매치결과 기록 실패(Supabase) match=${payload?.matchId}: ${sb.error}`);
+      if (!fb.ok) notify(`히스토리 기록 실패(Firestore) match=${payload?.matchId}: ${fb.error}`);
       return json(200, { ok: sb.ok || fb.ok, supabase: sb, firestore: fb });
     }
     if (req.method === "GET" && url === "/leaderboard") return json(200, await leaderboard());
@@ -408,4 +433,5 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`   로컬:  ws://localhost:${PORT}`);
   for (const ip of ips) console.log(`   같은망: ws://${ip}:${PORT}`);
   console.log("");
+  if (tgReady) notify(`릴레이 시작됨 (mode=${store.mode}, db=${sbReady}, firestore=${fbReady})`);
 });

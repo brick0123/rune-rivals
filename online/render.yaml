@@ -29,3 +29,8 @@ services:
       # 설정 시 인스턴스를 늘려도(numInstances↑, 유료) 공유상태+pub/sub 로 한 방을 공유.
       - key: REDIS_URL
         sync: false
+      # 텔레그램 에러 알림. 둘 다 있어야 알림 전송(없으면 콘솔 로그만).
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
