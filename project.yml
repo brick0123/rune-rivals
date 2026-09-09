@@ -13,6 +13,11 @@ settings:
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     TARGETED_DEVICE_FAMILY: "1,2"
+packages:
+  # 카카오 로그인 SDK(네이티브). 로그인·사용자·공통 모듈만 사용.
+  KakaoOpenSDK:
+    url: https://github.com/kakao/kakao-ios-sdk
+    from: "2.24.0"
 targets:
   RuneRivals:
     type: application
@@ -20,14 +25,37 @@ targets:
     sources:
       - path: App
       - path: Sources/RuneRivalsEngine
+    dependencies:
+      - package: KakaoOpenSDK
+        product: KakaoSDKUser
+      - package: KakaoOpenSDK
+        product: KakaoSDKAuth
+      - package: KakaoOpenSDK
+        product: KakaoSDKCommon
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.brick0123.runeup
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: 룬컬렉트
         ENABLE_PREVIEWS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+    # 생성 Info.plist — 가로 고정 + 카카오 로그인 URL 스킴/조회 스킴 포함.
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: 룬컬렉트
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # 카카오 로그인 리다이렉트(kakao<네이티브앱키>://oauth).
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - kakaod2d31930741da8e53db9be21118dc1ee
+        # 카카오톡 앱으로 로그인/전환 가능 여부 조회.
+        LSApplicationQueriesSchemes:
+          - kakaokompassauth
+          - kakaotalk
+          - kakaolink
