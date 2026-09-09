@@ -12,3 +12,6 @@ online/node_modules/
 serviceAccount*.json
 *firebase-adminsdk*.json
 *-service-account*.json
+
+# 임시 테스트 스크립트
+online/_*.mjs
