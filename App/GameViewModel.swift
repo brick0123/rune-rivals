@@ -439,17 +439,19 @@ final class GameViewModel {
             online = o
             if o.isHost { assumeHost(statePayload) }
         case let .joined(_, _, isHost, entries, _, _):
-            // 재접속 성공 → 좌석 상태 갱신 + 최신 게임상태 동기화.
+            // 재접속 성공 → 역할/좌석 상태 갱신 + 최신 게임상태 동기화.
+            // (이양 후 옛 호스트가 돌아오면 isHost=false 로 강등되어 게스트로 복귀)
             reconnecting = false
             if lastMessage == "재접속 중…" { lastMessage = "" }
             if var o = online {
                 var on = Array(repeating: false, count: playerNames.count)
                 for e in entries where e.seat >= 0 && e.seat < on.count { on[e.seat] = e.on }
                 o.seatOn = on
+                o.isHost = isHost
                 online = o
             }
             if isHost { broadcastSnap() }                 // 호스트: 현재 권위 상태 재전파
-            else { online?.client.relay(["k": "ready"]) }  // 게스트: 최신 스냅 요청
+            else { stopTimer(); online?.client.relay(["k": "ready"]) }  // 게스트: 권위 중단 + 최신 스냅 요청
         case .reconnecting:
             reconnecting = true
             if !state.ended { lastMessage = "재접속 중…" }
