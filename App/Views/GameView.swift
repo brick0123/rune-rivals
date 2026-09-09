@@ -5,6 +5,7 @@ import SwiftUI
 struct GameView: View {
     @Bindable var vm: GameViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var detail: CardDef?
     @State private var detailReserved = false
     @State private var detailViewOnly = false
@@ -46,7 +47,12 @@ struct GameView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { SoundPlayer.preload("pop"); SoundPlayer.preload("warn") }   // 클릭음·경고음 미리 로드
-        .onDisappear { SoundPlayer.stop("warn") }   // 게임 화면 나가면 초침 정지
+        .onDisappear {
+            SoundPlayer.stop("warn")            // 게임 화면 나가면 초침 정지
+            if vm.isOnline { vm.leaveOnline() }  // 화면 이탈 → 세션 종료(멱등, 소켓 정리)
+        }
+        // 앱을 백그라운드에 뒀다 다시 켜면(그동안 소켓이 끊겼을 수 있음) 즉시 재연결.
+        .onChange(of: scenePhase) { _, p in if p == .active { vm.ensureOnlineConnected() } }
         .animation(.easeInOut(duration: 0.15), value: detail)
         .animation(.easeInOut, value: vm.phase)
         .animation(.easeInOut, value: vm.reconnecting)

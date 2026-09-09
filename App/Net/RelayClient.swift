@@ -47,7 +47,7 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
     private var reconnecting = false        // 재접속 사이클 진행 중
     private var reconnectScheduled = false  // 재시도 예약됨(중복 방지)
     private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 60   // ×2초 ≈ 서버 유예(2.5분) 커버
+    private let maxReconnectAttempts = 1200  // 백오프 2~5초 → 게임 시간 내내 재시도(앱 포그라운드 복귀 시 리셋)
 
     func connect(_ url: URL) {
         self.url = url
@@ -108,12 +108,22 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
         reconnecting = true
         reconnectScheduled = true
         onEvent?(.reconnecting)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        let delay = min(2.0 + Double(reconnectAttempts) * 0.3, 5.0)   // 2→5초 백오프
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
             self.reconnectScheduled = false
             if self.intentionalClose || !self.reconnecting { return }
             self.openSocket()   // didOpen 에서 reconnect() 전송
         }
+    }
+
+    /// 앱이 포그라운드로 돌아왔을 때 즉시 재연결 시도(백그라운드 중엔 타이머가 안 돌아 끊긴 채일 수 있음).
+    func ensureConnected() {
+        if isOpen || intentionalClose { return }
+        guard savedToken != nil, url != nil else { return }
+        reconnectAttempts = 0            // 포그라운드 복귀 → 재시도 예산 리셋
+        reconnecting = true
+        if !reconnectScheduled { openSocket() }
     }
 
     // MARK: 수신 루프
@@ -154,7 +164,9 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
     func setStatus(_ status: String) { sendRaw(["t": "status", "status": status]) }
     func relay(_ payload: [String: Any]) { sendRaw(["t": "relay", "payload": payload]) }
     /// 명시적 나가기: 좌석 즉시 제거(재접속 안 함). leave 프레임 전송 후 소켓 종료.
+    /// 멱등 — 화면 이탈 등으로 여러 번 불려도 첫 호출만 유효(leave 프레임이 나가기 전 소켓이 닫히는 레이스 방지).
     func leave() {
+        if intentionalClose { return }
         intentionalClose = true
         reconnecting = false
         savedToken = nil

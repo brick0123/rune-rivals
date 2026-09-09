@@ -370,14 +370,8 @@ final class GameViewModel {
             // 온라인: 호스트만 이 경로로 턴 진행(게스트는 applyOnlineTurnState 로 렌더).
             guard o.isHost else { return }
             broadcastSnap()
-            // 끊긴 좌석이면 즉시 스킵(연결된 좌석이 하나도 없으면 대기).
-            if o.seatOn.indices.contains(state.currentPlayer), !o.seatOn[state.currentPlayer] {
-                if o.seatOn.contains(true) {
-                    lastMessage = "\(playerNames[state.currentPlayer]) 이탈 — 스킵"
-                    finishTurn(state); resolvePhaseForCurrent()
-                }
-                return
-            }
+            // 끊긴 좌석도 즉시 스킵하지 않고 30초 타이머로만 진행 → 그 안에 재접속하면 자기 턴을 살릴 수 있음.
+            // (돌아오지 않으면 onTurnTimeout 이 일반 패스 처리. 게임 끝날 때까지 언제든 재입장 가능.)
             startTurnTimer()
             phase = (state.currentPlayer == o.mySeat) ? .main : .aiThinking   // 내 턴 / 상대 턴 대기
             if phase == .main, legalMainActions(state).isEmpty {
@@ -431,12 +425,7 @@ final class GameViewModel {
             for e in entries where e.seat >= 0 && e.seat < on.count { on[e.seat] = e.on }
             o.seatOn = on
             online = o
-            // 호스트: 현재 좌석이 방금 끊겼으면 스킵 재평가
-            if o.isHost, !state.ended, o.seatOn.indices.contains(state.currentPlayer),
-               !o.seatOn[state.currentPlayer], o.seatOn.contains(true),
-               (phase == .aiThinking || phase == .main) {
-                finishTurn(state); resolvePhaseForCurrent()
-            }
+            // 끊겨도 즉시 스킵하지 않음 — 현재 턴 타이머가 끝나야 넘어감(그 안에 돌아오면 그 턴 유지).
         case let .joined(_, _, isHost, entries, _, _):
             // 재접속 성공 → 좌석 상태 갱신 + 최신 게임상태 동기화.
             reconnecting = false
@@ -462,8 +451,10 @@ final class GameViewModel {
         }
     }
 
-    /// 온라인 게임에서 명시적으로 나가기(좌석 즉시 제거 → 자동 재접속 안 함).
+    /// 온라인 세션 종료(명시적 나가기 = 좌석 즉시 제거, 재접속 안 함). 멱등 — 화면 이탈/버튼 어디서 불려도 안전.
     func leaveOnline() { online?.client.leave() }
+    /// 앱이 포그라운드로 돌아왔을 때 끊겨 있으면 즉시 재연결.
+    func ensureOnlineConnected() { if !state.ended { online?.client.ensureConnected() } }
 
     private func handleRelayPayload(fromSeat: Int, payload: [String: Any]) {
         guard let o = online, let k = payload["k"] as? String else { return }

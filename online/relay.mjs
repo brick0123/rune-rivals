@@ -89,6 +89,27 @@ const localSockets = new Map();    // code -> Map<seat, ws>
 const localSpectators = new Map(); // code -> Set<ws>
 const localConns = new Map();      // connId -> ws (큐/매칭 통지용)
 const lobbySubs = new Set();
+const roomIdleTimers = new Map();  // code -> timeout (게임 중 전원 끊긴 방 정리 예약)
+const ROOM_IDLE_MS = 900000;       // 15분: 진행 중 방이라도 전원 끊긴 채 15분이면 방 삭제(리소스 누수 방지)
+
+// 방에 접속(connected) 상태인 멤버가 하나도 없나?
+async function noneConnected(code) {
+  const r = await store.getRoom(code);
+  if (!r) return true;
+  return !Object.values(r.members).some((m) => m.connected);
+}
+function cancelRoomIdle(code) { const t = roomIdleTimers.get(code); if (t) { clearTimeout(t); roomIdleTimers.delete(code); } }
+function scheduleRoomIdle(code) {
+  cancelRoomIdle(code);
+  roomIdleTimers.set(code, setTimeout(() => {
+    roomIdleTimers.delete(code);
+    (async () => {
+      if (!(await noneConnected(code))) return;   // 그새 누군가 재접속 → 유지
+      await store.deleteRoom(code);
+      await pushLobby();
+    })().catch((e) => console.error("[relay] room idle cleanup", e?.message || e));
+  }, ROOM_IDLE_MS));
+}
 let codeSeq = 0;
 let matchTimer = null;
 const send = (ws, obj) => { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj)); };
@@ -333,6 +354,7 @@ wss.on("connection", (ws) => {
             const isHost = seat === r.hostSeat;
             await store.addMember(code, seat, { instanceId: INSTANCE, name: r.members[seat].name, token: msg.token });
             await store.setConnected(code, seat, true);
+            cancelRoomIdle(code);   // 재접속 → 방 정리 예약 취소
             ws.meta = { code, seat, role: isHost ? "host" : "player", name: r.members[seat].name, connId: ws.meta.connId };
             addLocalSocket(code, seat, ws);
             await bus.subscribeRoom(code);
@@ -418,12 +440,19 @@ async function removeFromRoom(ws, immediate) {
     await finalize();
     return;
   }
-  // 유예: 접속 끊김 표시 → roster 브로드캐스트(호스트가 그 좌석 스킵), GRACE 후 완전 제거.
+  // 유예: 접속 끊김 표시 → roster 브로드캐스트(그 좌석은 턴 타이머로 진행).
   await store.setConnected(code, seat, false);
   removeLocalSocket(code, seat);
   await broadcastRoster(code);
   if (!hasLocal(code)) await bus.unsubscribeRoom(code);
-  setTimeout(() => { finalize().catch((e) => console.error(e)); }, GRACE_MS);
+  if (r.status === "playing") {
+    // 게임 진행 중: 좌석을 없애지 않는다 → 게임 끝날 때까지 언제든 토큰으로 재입장 가능.
+    // 단, 전원이 다 끊긴 방은 15분 뒤 정리(누수 방지).
+    if (await noneConnected(code)) scheduleRoomIdle(code);
+  } else {
+    // 대기 방(게임 전): 짧은 유예 후 좌석 회수.
+    setTimeout(() => { finalize().catch((e) => console.error(e)); }, GRACE_MS);
+  }
 }
 
 server.listen(PORT, "0.0.0.0", () => {
