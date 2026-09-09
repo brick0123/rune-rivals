@@ -91,6 +91,8 @@ const localConns = new Map();      // connId -> ws (큐/매칭 통지용)
 const lobbySubs = new Set();
 const roomIdleTimers = new Map();  // code -> timeout (게임 중 전원 끊긴 방 정리 예약)
 const ROOM_IDLE_MS = 900000;       // 15분: 진행 중 방이라도 전원 끊긴 채 15분이면 방 삭제(리소스 누수 방지)
+const hostGraceTimers = new Map(); // code -> timeout (호스트 이탈 시 이양 예약)
+const HOST_GRACE_MS = 20000;       // 20초: 호스트가 안 돌아오면 다른 플레이어에게 권위 이양(앱 완전 종료 대비)
 
 // 방에 접속(connected) 상태인 멤버가 하나도 없나?
 async function noneConnected(code) {
@@ -99,6 +101,31 @@ async function noneConnected(code) {
   return !Object.values(r.members).some((m) => m.connected);
 }
 function cancelRoomIdle(code) { const t = roomIdleTimers.get(code); if (t) { clearTimeout(t); roomIdleTimers.delete(code); } }
+function cancelHostGrace(code) { const t = hostGraceTimers.get(code); if (t) { clearTimeout(t); hostGraceTimers.delete(code); } }
+function scheduleHostGrace(code) {
+  cancelHostGrace(code);
+  hostGraceTimers.set(code, setTimeout(() => {
+    hostGraceTimers.delete(code);
+    promoteNewHost(code).catch((e) => console.error("[relay] host handoff", e?.message || e));
+  }, HOST_GRACE_MS));
+}
+// 호스트가 유예시간 내 안 돌아오면 접속 중인 다른 플레이어에게 권위 이양(저장된 최신 스냅과 함께).
+async function promoteNewHost(code) {
+  const r = await store.getRoom(code);
+  if (!r || r.status !== "playing") return;
+  if (r.members[r.hostSeat] && r.members[r.hostSeat].connected) return;   // 호스트 복귀 → 이양 취소
+  const connected = Object.entries(r.members).filter(([, m]) => m.connected).map(([s]) => Number(s)).sort((a, b) => a - b);
+  if (!connected.length) return;   // 아무도 없음 → 방 idle 정리에 맡김
+  const newHost = connected[0];
+  await store.setHostSeat(code, newHost);
+  let stateObj = null;
+  const snapStr = await store.getSnap(code);
+  if (snapStr) { try { stateObj = JSON.parse(snapStr); } catch {} }
+  bus.toRoom(code, { kind: "seat", seat: newHost }, { t: "promote", hostSeat: newHost, roster: await rosterOf(code), state: stateObj });
+  await broadcastRoster(code);
+  await pushLobby();
+  console.log(`[relay] 호스트 이양 ${code}: → seat ${newHost}`);
+}
 function scheduleRoomIdle(code) {
   cancelRoomIdle(code);
   roomIdleTimers.set(code, setTimeout(() => {
@@ -355,6 +382,7 @@ wss.on("connection", (ws) => {
             await store.addMember(code, seat, { instanceId: INSTANCE, name: r.members[seat].name, token: msg.token });
             await store.setConnected(code, seat, true);
             cancelRoomIdle(code);   // 재접속 → 방 정리 예약 취소
+            if (seat === r.hostSeat) cancelHostGrace(code);   // 호스트가 유예 내 복귀 → 이양 취소
             ws.meta = { code, seat, role: isHost ? "host" : "player", name: r.members[seat].name, connId: ws.meta.connId };
             addLocalSocket(code, seat, ws);
             await bus.subscribeRoom(code);
@@ -369,10 +397,16 @@ wss.on("connection", (ws) => {
             return;
           }
           case "relay": {
-            const code = ws.meta.code; if (!code) return;
+            const code = ws.meta.code; if (!code || ws.meta.seat < 0) return;   // 관전자 등 제외
             const r = await store.getRoom(code); if (!r) return;
-            if (ws.meta.role === "host") bus.toRoom(code, { kind: "exceptSeat", seat: r.hostSeat }, { t: "relay", fromSeat: r.hostSeat, payload: msg.payload });
-            else if (ws.meta.role === "player") bus.toRoom(code, { kind: "seat", seat: r.hostSeat }, { t: "relay", fromSeat: ws.meta.seat, payload: msg.payload });
+            // 라우팅은 좌석 vs 현재 hostSeat 로 판단(호스트 이양 후에도 안전) — 캐시된 role 에 의존 안 함.
+            if (ws.meta.seat === r.hostSeat) {
+              const p = msg.payload;
+              if (p && p.k === "snap" && typeof p.snap === "string") await store.setSnap(code, JSON.stringify(p));   // 이양 대비 최신 상태 저장
+              bus.toRoom(code, { kind: "exceptSeat", seat: r.hostSeat }, { t: "relay", fromSeat: r.hostSeat, payload: p });
+            } else {
+              bus.toRoom(code, { kind: "seat", seat: r.hostSeat }, { t: "relay", fromSeat: ws.meta.seat, payload: msg.payload });
+            }
             return;
           }
           case "leave": await removeFromRoom(ws, true); return;
@@ -447,7 +481,8 @@ async function removeFromRoom(ws, immediate) {
   if (!hasLocal(code)) await bus.unsubscribeRoom(code);
   if (r.status === "playing") {
     // 게임 진행 중: 좌석을 없애지 않는다 → 게임 끝날 때까지 언제든 토큰으로 재입장 가능.
-    // 단, 전원이 다 끊긴 방은 15분 뒤 정리(누수 방지).
+    if (seat === r.hostSeat) scheduleHostGrace(code);   // 호스트 이탈 → 20초 뒤 다른 플레이어에 이양
+    // 전원이 다 끊긴 방은 15분 뒤 정리(누수 방지).
     if (await noneConnected(code)) scheduleRoomIdle(code);
   } else {
     // 대기 방(게임 전): 짧은 유예 후 좌석 회수.

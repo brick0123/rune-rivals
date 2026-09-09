@@ -26,8 +26,8 @@ enum TurnPhase: Equatable {
 struct OnlineContext {
     let client: RelayClient
     let mySeat: Int
-    let isHost: Bool
-    var seatOn: [Bool]   // 좌석별 접속 여부(호스트가 roster로 갱신, 끊긴 좌석은 턴 스킵)
+    var isHost: Bool     // 호스트 이양(promote)으로 바뀔 수 있음
+    var seatOn: [Bool]   // 좌석별 접속 여부(호스트가 roster로 갱신)
 }
 
 @MainActor
@@ -373,8 +373,11 @@ final class GameViewModel {
             // 끊긴 좌석도 즉시 스킵하지 않고 30초 타이머로만 진행 → 그 안에 재접속하면 자기 턴을 살릴 수 있음.
             // (돌아오지 않으면 onTurnTimeout 이 일반 패스 처리. 게임 끝날 때까지 언제든 재입장 가능.)
             startTurnTimer()
-            phase = (state.currentPlayer == o.mySeat) ? .main : .aiThinking   // 내 턴 / 상대 턴 대기
-            if phase == .main, legalMainActions(state).isEmpty {
+            // 온라인엔 AI가 없다 → 호스트 phase 는 "현재 턴의 서브페이즈(main)"를 의미.
+            // 내 조작 노출은 isHumanTurn 으로 별도 게이팅되므로, 게스트 턴이어도 .main 이라야
+            // 그 게스트의 액션을 applyRemoteAction(phase==.main 요구)에서 처리할 수 있다.
+            phase = .main
+            if legalMainActions(state).isEmpty {
                 lastMessage = "행동 불가 — 패스"
                 finishTurn(state); resolvePhaseForCurrent()
             }
@@ -426,6 +429,15 @@ final class GameViewModel {
             o.seatOn = on
             online = o
             // 끊겨도 즉시 스킵하지 않음 — 현재 턴 타이머가 끝나야 넘어감(그 안에 돌아오면 그 턴 유지).
+        case let .promote(hostSeat, entries, statePayload):
+            // 호스트가 완전히 떠나(앱 종료 등) 서버가 나를 새 호스트로 승격 → 저장된 상태로 권위 인계.
+            guard var o = online else { break }
+            var on = Array(repeating: false, count: playerNames.count)
+            for e in entries where e.seat >= 0 && e.seat < on.count { on[e.seat] = e.on }
+            o.seatOn = on
+            o.isHost = (hostSeat == o.mySeat)
+            online = o
+            if o.isHost { assumeHost(statePayload) }
         case let .joined(_, _, isHost, entries, _, _):
             // 재접속 성공 → 좌석 상태 갱신 + 최신 게임상태 동기화.
             reconnecting = false
@@ -449,6 +461,32 @@ final class GameViewModel {
         default:
             break
         }
+    }
+
+    /// 새 호스트로 승격됐을 때: 서버가 준 최신 상태로 권위를 이어받아 게임을 계속 진행.
+    private func assumeHost(_ statePayload: [String: Any]?) {
+        // 서버 저장 스냅(내가 게스트로서 놓쳤을 수 있는 마지막 상태) 반영. 없으면 내 현재 state 사용.
+        if let sp = statePayload, let s = sp["snap"] as? String, let snap = GameSnapshot.decode(Data(s.utf8)) {
+            state.applySnapshot(snap)
+        }
+        resultPosted = false           // 새 호스트가 종료 결과 기록 책임(중복은 서버 upsert가 흡수)
+        lastMessage = "호스트를 이어받았어요"
+        stopTimer()
+        if state.ended {
+            phase = .gameOver; publishState(); broadcastSnap(); postResult(); return
+        }
+        currentSeat = state.currentPlayer
+        let ph = (statePayload?["phase"] as? String) ?? "main"
+        if ph == "evolve" {
+            phase = .evolve
+            pendingEvolutions = legalEvolutions(state)
+        } else {
+            phase = .main
+            if legalMainActions(state).isEmpty { finishTurn(state); resolvePhaseForCurrent(); return }
+        }
+        startTurnTimer()
+        broadcastSnap()   // 전원에 "새 호스트의 권위 상태" 재전파
+        publishState()
     }
 
     /// 온라인 세션 종료(명시적 나가기 = 좌석 즉시 제거, 재접속 안 함). 멱등 — 화면 이탈/버튼 어디서 불려도 안전.

@@ -10,9 +10,12 @@ export function createStore(redis) {
 // ── 메모리 구현 (단일 인스턴스) ─────────────────────────────
 function memoryStore() {
   const rooms = new Map(); // code -> { name, status, hostSeat, members:Map<seat,{instanceId,name,token,connected}> }
+  const snaps = new Map(); // code -> 최신 게임 스냅샷 payload(문자열) — 호스트 이양용
   const queue = [];        // { instanceId, connId, name, ts }
   return {
     mode: "memory",
+    async setSnap(code, s) { snaps.set(code, s); },
+    async getSnap(code) { return snaps.get(code) ?? null; },
     async createRoom(code, { name, hostSeat = 0 }) {
       rooms.set(code, { name, status: "waiting", hostSeat, members: new Map() });
     },
@@ -31,10 +34,10 @@ function memoryStore() {
       const r = rooms.get(code); if (!r) return -1;
       r.members.delete(seat);
       const n = r.members.size;
-      if (n === 0) rooms.delete(code);
+      if (n === 0) { rooms.delete(code); snaps.delete(code); }
       return n;
     },
-    async deleteRoom(code) { rooms.delete(code); },
+    async deleteRoom(code) { rooms.delete(code); snaps.delete(code); },
     async firstFreeSeat(code, maxSeats) {
       const r = rooms.get(code); if (!r) return -1;
       for (let s = 0; s < maxSeats; s++) if (!r.members.has(s)) return s;
@@ -71,8 +74,11 @@ return out
 function redisStore(redis) {
   redis.defineCommand("mmMatch", { numberOfKeys: 1, lua: MATCH_LUA });
   const rk = (code) => `room:${code}`;
+  const sk = (code) => `snap:${code}`;
   return {
     mode: "redis",
+    async setSnap(code, s) { await redis.set(sk(code), s, "EX", 7200); },   // 2시간 TTL(방치 방지)
+    async getSnap(code) { return (await redis.get(sk(code))) ?? null; },
     async createRoom(code, { name, hostSeat = 0 }) {
       await redis.hset(rk(code), "name", name, "status", "waiting", "hostSeat", String(hostSeat));
       await redis.sadd("rooms", code);
@@ -98,10 +104,10 @@ function redisStore(redis) {
       await redis.hdel(rk(code), `m:${seat}`);
       const h = await redis.hgetall(rk(code));
       const n = Object.keys(h).filter((k) => k.startsWith("m:")).length;
-      if (n === 0) { await redis.del(rk(code)); await redis.srem("rooms", code); }
+      if (n === 0) { await redis.del(rk(code)); await redis.del(sk(code)); await redis.srem("rooms", code); }
       return n;
     },
-    async deleteRoom(code) { await redis.del(rk(code)); await redis.srem("rooms", code); },
+    async deleteRoom(code) { await redis.del(rk(code)); await redis.del(sk(code)); await redis.srem("rooms", code); },
     async firstFreeSeat(code, maxSeats) {
       const h = await redis.hgetall(rk(code));
       const taken = new Set(Object.keys(h).filter((k) => k.startsWith("m:")).map((k) => Number(k.slice(2))));

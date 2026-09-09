@@ -18,7 +18,7 @@ enum RelayEvent {
     case queued(size: Int)
     case joined(code: String, seat: Int, isHost: Bool, roster: [RosterEntry], token: String, hostSeat: Int)
     case spectating(code: String, roster: [RosterEntry], hostSeat: Int)
-    case promote(hostSeat: Int, roster: [RosterEntry])
+    case promote(hostSeat: Int, roster: [RosterEntry], state: [String: Any]?)
     case roster([RosterEntry], hostSeat: Int)
     case relay(fromSeat: Int, payload: [String: Any])
     case resend
@@ -202,7 +202,8 @@ final class RelayClient: NSObject, URLSessionWebSocketDelegate {
         case "spectating":
             onEvent?(.spectating(code: m["code"] as? String ?? "", roster: roster(m["roster"]), hostSeat: m["hostSeat"] as? Int ?? 0))
         case "promote":
-            onEvent?(.promote(hostSeat: m["hostSeat"] as? Int ?? 0, roster: roster(m["roster"])))
+            onEvent?(.promote(hostSeat: m["hostSeat"] as? Int ?? 0, roster: roster(m["roster"]),
+                              state: m["state"] as? [String: Any]))
         case "roster":
             onEvent?(.roster(roster(m["roster"]), hostSeat: m["hostSeat"] as? Int ?? 0))
         case "relay":
