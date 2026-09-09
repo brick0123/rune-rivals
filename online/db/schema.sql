@@ -66,3 +66,17 @@ create policy p_players_read on players       for select using (true);
 create policy p_matches_read on matches       for select using (true);
 create policy p_results_read on match_results for select using (true);
 -- insert/update 정책 없음 → anon 쓰기 불가. 서버는 service_role 로 RLS 우회하여 기록.
+
+-- ── 계정(카카오 로그인) ─────────────────────────────
+-- 카카오 로그인 사용자. kakao_id 로 식별, nickname 은 대소문자 무시 유일.
+create table if not exists accounts (
+  id         uuid primary key default gen_random_uuid(),
+  kakao_id   text not null unique,
+  nickname   text not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists idx_accounts_nick_ci on accounts (lower(nickname));
+
+-- 계정은 anon 접근 전면 차단(닉네임 열람/도용 방지) — 서버(service_role)만 접근.
+alter table accounts enable row level security;
+-- select/insert 정책 없음 → anon 은 읽기·쓰기 모두 불가. 릴레이가 service_role 로만 다룬다.

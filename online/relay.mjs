@@ -210,6 +210,38 @@ async function leaderboard() {
   return { ok: true, rows: await r.json() };
 }
 
+// ── 계정(카카오 로그인 + 닉네임) ─────────────────────────────
+const NICK_RE = /^[가-힣a-zA-Z0-9]{2,10}$/;   // 한글·영문·숫자 2~10자
+function validNick(n) {
+  const s = (typeof n === "string" ? n : "").trim();
+  if (s.length < 2) return "2자 이상이어야 해요";
+  if (s.length > 10) return "10자 이하여야 해요";
+  if (!NICK_RE.test(s)) return "한글·영문·숫자만 쓸 수 있어요";
+  return null;
+}
+// 대소문자 무시 중복 확인(ilike 는 와일드카드 없으면 정확 일치, NICK_RE 로 %/_ 차단됨).
+async function nickTaken(nick) {
+  const r = await fetch(`${SB_URL}/rest/v1/accounts?select=id&nickname=ilike.${encodeURIComponent(nick)}&limit=1`, { headers: sbHeaders });
+  if (!r.ok) throw new Error(`db ${r.status}`);
+  return (await r.json()).length > 0;
+}
+// 카카오 액세스 토큰 검증 → 카카오 사용자 id(문자열). 실패 시 null.
+async function kakaoUserId(accessToken) {
+  if (!accessToken || typeof accessToken !== "string") return null;
+  try {
+    const r = await fetch("https://kapi.kakao.com/v2/user/me", { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j && j.id != null ? String(j.id) : null;
+  } catch { return null; }
+}
+async function accountByKakao(kid) {
+  const r = await fetch(`${SB_URL}/rest/v1/accounts?select=id,nickname&kakao_id=eq.${encodeURIComponent(kid)}&limit=1`, { headers: sbHeaders });
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return rows.length ? rows[0] : null;
+}
+
 // HTTP: 헬스체크 + 전적 기록/조회. WS 업그레이드는 아래 wss 가 처리.
 const server = createServer(async (req, res) => {
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
@@ -228,6 +260,46 @@ const server = createServer(async (req, res) => {
       return json(200, { ok: sb.ok || fb.ok, supabase: sb, firestore: fb });
     }
     if (req.method === "GET" && url === "/leaderboard") return json(200, await leaderboard());
+    // 닉네임 사용 가능 여부(타이핑마다 호출) — 인증 불필요.
+    if (req.method === "GET" && url === "/nickname/check") {
+      const name = new URL(req.url, "http://x").searchParams.get("name") || "";
+      const bad = validNick(name);
+      if (bad) return json(200, { ok: true, available: false, reason: bad });
+      try {
+        const taken = await nickTaken(name.trim());
+        return json(200, { ok: true, available: !taken, reason: taken ? "이미 사용 중이에요" : "사용 가능해요" });
+      } catch { return json(200, { ok: false, available: false, reason: "확인 실패" }); }
+    }
+    // 카카오 로그인: 토큰 검증 → 기존 회원이면 계정 반환, 신규면 registered:false(닉네임 가입 필요).
+    if (req.method === "POST" && url === "/auth/kakao") {
+      const body = await readBody(req); let p; try { p = JSON.parse(body); } catch { return json(400, { ok: false, error: "bad json" }); }
+      const kid = await kakaoUserId(p.accessToken);
+      if (!kid) return json(401, { ok: false, error: "카카오 인증 실패" });
+      const acc = await accountByKakao(kid);
+      if (acc) return json(200, { ok: true, registered: true, userId: acc.id, nickname: acc.nickname });
+      return json(200, { ok: true, registered: false });
+    }
+    // 회원가입: 토큰 검증 + 닉네임 확정(대소문자 무시 유일). 동시성은 DB unique 로 보장.
+    if (req.method === "POST" && url === "/auth/register") {
+      const body = await readBody(req); let p; try { p = JSON.parse(body); } catch { return json(400, { ok: false, error: "bad json" }); }
+      const kid = await kakaoUserId(p.accessToken);
+      if (!kid) return json(401, { ok: false, error: "카카오 인증 실패" });
+      const nick = String(p.nickname ?? "").trim();
+      const bad = validNick(nick);
+      if (bad) return json(200, { ok: false, error: bad });
+      const existing = await accountByKakao(kid);
+      if (existing) return json(200, { ok: true, userId: existing.id, nickname: existing.nickname });   // 이미 가입됨
+      try {
+        const ins = await fetch(`${SB_URL}/rest/v1/accounts`, {
+          method: "POST", headers: { ...sbHeaders, Prefer: "return=representation" },
+          body: JSON.stringify({ kakao_id: kid, nickname: nick }),
+        });
+        if (ins.status === 409) return json(200, { ok: false, error: "이미 사용 중인 닉네임이에요" });
+        if (!ins.ok) { const t = await ins.text(); return json(200, { ok: false, error: /duplicate|unique/i.test(t) ? "이미 사용 중인 닉네임이에요" : "가입 실패" }); }
+        const row = (await ins.json())[0];
+        return json(200, { ok: true, userId: row.id, nickname: row.nickname });
+      } catch (e) { notify(`회원가입 실패: ${e?.message || e}`); return json(200, { ok: false, error: "가입 실패" }); }
+    }
     return json(200, { ok: true, service: "rune-rivals-relay", mode: store.mode, rooms: localSockets.size, db: sbReady, firestore: fbReady });
   } catch (e) { return json(500, { ok: false, error: String(e?.message || e) }); }
 });
