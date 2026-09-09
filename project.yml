@@ -38,6 +38,9 @@ targets:
         ENABLE_PREVIEWS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # 배포 서명(TestFlight/App Store) — 유료 팀(jinho han).
+        DEVELOPMENT_TEAM: "372H39X75P"
+        CODE_SIGN_STYLE: Automatic
     # 생성 Info.plist — 가로 고정 + 카카오 로그인 URL 스킴/조회 스킴 포함.
     info:
       path: App/Info.plist
