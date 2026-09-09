@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var checkTask: Task<Void, Never>?
     @State private var busy = false
     @State private var error = ""
+    @State private var stats: AccountManager.Stats?
 
     var body: some View {
         ZStack {
@@ -32,6 +33,7 @@ struct ProfileView: View {
                 }
                 .padding(.vertical, 4)
 
+                if !editing { statsRow }
                 if editing { nicknameEditor } else { actions }
 
                 if !error.isEmpty {
@@ -53,6 +55,28 @@ struct ProfileView: View {
             }
             .padding()
         }
+        .task { stats = await account.fetchStats() }   // 전적 로드
+    }
+
+    // 일반전 전적 — 승/패/승률.
+    private var statsRow: some View {
+        VStack(spacing: 6) {
+            Text("일반전 전적\(stats.map { " · \($0.games)전" } ?? "")")
+                .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.textDim)
+            HStack(spacing: 10) {
+                statBox("승", stats.map { "\($0.wins)" } ?? "-", .green)
+                statBox("패", stats.map { "\($0.losses)" } ?? "-", .orange)
+                statBox("승률", stats.map { "\(Int($0.winRate.rounded()))%" } ?? "-", .cyan)
+            }
+        }
+    }
+    private func statBox(_ label: String, _ value: String, _ color: SwiftUI.Color) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.system(size: 20, weight: .heavy)).foregroundStyle(color)
+            Text(label).font(.system(size: 11)).foregroundStyle(Theme.textDim)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 10)
+        .background(Theme.surfaceHi, in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var actions: some View {

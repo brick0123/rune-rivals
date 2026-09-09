@@ -322,6 +322,20 @@ const server = createServer(async (req, res) => {
         return json(200, { ok: true, userId: row.id, nickname: row.nickname });
       } catch (e) { notify(`닉네임 변경 실패: ${e?.message || e}`); return json(200, { ok: false, error: "변경 실패" }); }
     }
+    // 일반전 전적: 닉네임 기준, mode=casual 만 집계 → 승/패/승률.
+    if (req.method === "GET" && url === "/me/stats") {
+      const name = new URL(req.url, "http://x").searchParams.get("name") || "";
+      if (!name) return json(200, { ok: true, games: 0, wins: 0, losses: 0, winRate: 0 });
+      const q = `${SB_URL}/rest/v1/match_results?select=rank,matches!inner(mode)&name=eq.${encodeURIComponent(name)}&is_ai=eq.false&matches.mode=eq.casual`;
+      const r = await fetch(q, { headers: sbHeaders });
+      if (!r.ok) return json(200, { ok: false, error: `${r.status}` });
+      const rows = await r.json();
+      const games = rows.length;
+      const wins = rows.filter((x) => x.rank === 1).length;
+      const losses = games - wins;
+      const winRate = games ? Math.round((1000 * wins) / games) / 10 : 0;
+      return json(200, { ok: true, games, wins, losses, winRate });
+    }
     return json(200, { ok: true, service: "rune-rivals-relay", mode: store.mode, rooms: localSockets.size, db: sbReady, firestore: fbReady });
   } catch (e) { return json(500, { ok: false, error: String(e?.message || e) }); }
 });

@@ -91,6 +91,23 @@ final class AccountManager {
         return .failure(resp["error"] as? String ?? "가입 실패")
     }
 
+    struct Stats: Equatable { let games: Int; let wins: Int; let losses: Int; let winRate: Double }
+
+    /// 일반전 전적 조회(닉네임 기준, casual 만).
+    func fetchStats() async -> Stats? {
+        guard let nick = nickname else { return nil }
+        let q = nick.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        guard let url = URL(string: "\(httpBase)/me/stats?name=\(q)") else { return nil }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let j = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  j["ok"] as? Bool == true else { return nil }
+            let rate = (j["winRate"] as? Double) ?? Double(j["winRate"] as? Int ?? 0)
+            return Stats(games: j["games"] as? Int ?? 0, wins: j["wins"] as? Int ?? 0,
+                         losses: j["losses"] as? Int ?? 0, winRate: rate)
+        } catch { return nil }
+    }
+
     /// 닉네임 변경(카카오 재인증 토큰 필요). 성공 시 저장 갱신.
     func rename(accessToken: String, nickname: String) async -> RegisterOutcome {
         guard let resp = await post("/auth/rename", ["accessToken": accessToken, "nickname": nickname]) else {
