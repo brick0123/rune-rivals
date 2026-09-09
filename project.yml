@@ -47,6 +47,8 @@ targets:
       properties:
         CFBundleDisplayName: 룬컬렉트
         UILaunchScreen: {}
+        # 표준 암호화(HTTPS)만 사용 → 수출 규정 면제. TestFlight 암호화 질문 스킵.
+        ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
