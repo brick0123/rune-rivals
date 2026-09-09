@@ -59,12 +59,10 @@ struct OnlineLobbyView: View {
         .onDisappear { ticker?.invalidate() }
     }
 
-    /// 닉네임(저장, 기본 랜덤).
+    /// 닉네임 — 카카오 로그인 계정 닉네임 사용(비로그인 폴백은 랜덤).
     private var nickname: String {
-        if let n = UserDefaults.standard.string(forKey: "nickname"), !n.isEmpty { return n }
-        let n = "플레이어\(Int.random(in: 1000 ... 9999))"
-        UserDefaults.standard.set(n, forKey: "nickname")
-        return n
+        if let n = AccountManager.shared.nickname, !n.isEmpty { return n }
+        return "플레이어\(Int.random(in: 1000 ... 9999))"
     }
 
     private func start() {

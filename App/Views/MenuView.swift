@@ -6,7 +6,9 @@ struct MenuView: View {
     @State private var mode: GameMode = .single
     @State private var startSingle = false
     @State private var openLobby = false
+    @State private var showLogin = false
     @State private var seed: UInt32 = 1
+    @State private var account = AccountManager.shared
 
     /// 싱글 기본 인원(나 + AI 2). 최대 3인.
     private let singlePlayers = 3
@@ -39,6 +41,10 @@ struct MenuView: View {
             }
             .navigationDestination(isPresented: $openLobby) {
                 OnlineLobbyView(ranked: false)
+            }
+            .sheet(isPresented: $showLogin) {
+                LoginView(onDone: { showLogin = false; openLobby = true },
+                          onCancel: { showLogin = false })
             }
         }
     }
@@ -109,7 +115,7 @@ struct MenuView: View {
                 guard mode.isAvailable else { return }
                 switch mode {
                 case .single: seed = UInt32.random(in: 1 ... UInt32.max); startSingle = true
-                case .casual: openLobby = true
+                case .casual: if account.isLoggedIn { openLobby = true } else { showLogin = true }   // 일반전은 로그인 필요
                 case .ranked: break
                 }
             } label: {
