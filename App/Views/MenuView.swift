@@ -7,6 +7,7 @@ struct MenuView: View {
     @State private var startSingle = false
     @State private var openLobby = false
     @State private var showLogin = false
+    @State private var showProfile = false
     @State private var seed: UInt32 = 1
     @State private var account = AccountManager.shared
 
@@ -36,6 +37,22 @@ struct MenuView: View {
                 .padding(.horizontal, 40)
                 .padding(.vertical, 16)
             }
+            // 로그인 상태면 우상단에 프로필 칩(닉네임) — 탭하면 프로필 화면.
+            .overlay(alignment: .topTrailing) {
+                if account.isLoggedIn {
+                    Button { showProfile = true } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.crop.circle.fill")
+                            Text(account.nickname ?? "").font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .background(Theme.surface, in: Capsule())
+                        .overlay(Capsule().stroke(Theme.stroke, lineWidth: 1))
+                    }
+                    .padding(.top, 12).padding(.trailing, 16)
+                }
+            }
             .navigationDestination(isPresented: $startSingle) {
                 GameView(vm: GameViewModel(mode: .single, numPlayers: singlePlayers, seed: seed))
             }
@@ -45,6 +62,9 @@ struct MenuView: View {
             .sheet(isPresented: $showLogin) {
                 LoginView(onDone: { showLogin = false; openLobby = true },
                           onCancel: { showLogin = false })
+            }
+            .sheet(isPresented: $showProfile) {
+                ProfileView(onClose: { showProfile = false })
             }
         }
     }

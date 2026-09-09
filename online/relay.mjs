@@ -300,6 +300,28 @@ const server = createServer(async (req, res) => {
         return json(200, { ok: true, userId: row.id, nickname: row.nickname });
       } catch (e) { notify(`회원가입 실패: ${e?.message || e}`); return json(200, { ok: false, error: "가입 실패" }); }
     }
+    // 닉네임 변경: 토큰 재검증 + 새 닉네임 확정(대소문자 무시 유일).
+    if (req.method === "POST" && url === "/auth/rename") {
+      const body = await readBody(req); let p; try { p = JSON.parse(body); } catch { return json(400, { ok: false, error: "bad json" }); }
+      const kid = await kakaoUserId(p.accessToken);
+      if (!kid) return json(401, { ok: false, error: "카카오 인증 실패" });
+      const nick = String(p.nickname ?? "").trim();
+      const bad = validNick(nick);
+      if (bad) return json(200, { ok: false, error: bad });
+      const acc = await accountByKakao(kid);
+      if (!acc) return json(200, { ok: false, error: "가입 정보가 없어요" });
+      if (acc.nickname === nick) return json(200, { ok: true, userId: acc.id, nickname: nick });   // 동일 → 그대로
+      try {
+        const upd = await fetch(`${SB_URL}/rest/v1/accounts?kakao_id=eq.${encodeURIComponent(kid)}`, {
+          method: "PATCH", headers: { ...sbHeaders, Prefer: "return=representation" },
+          body: JSON.stringify({ nickname: nick }),
+        });
+        if (upd.status === 409) return json(200, { ok: false, error: "이미 사용 중인 닉네임이에요" });
+        if (!upd.ok) { const t = await upd.text(); return json(200, { ok: false, error: /duplicate|unique/i.test(t) ? "이미 사용 중인 닉네임이에요" : "변경 실패" }); }
+        const row = (await upd.json())[0];
+        return json(200, { ok: true, userId: row.id, nickname: row.nickname });
+      } catch (e) { notify(`닉네임 변경 실패: ${e?.message || e}`); return json(200, { ok: false, error: "변경 실패" }); }
+    }
     return json(200, { ok: true, service: "rune-rivals-relay", mode: store.mode, rooms: localSockets.size, db: sbReady, firestore: fbReady });
   } catch (e) { return json(500, { ok: false, error: String(e?.message || e) }); }
 });

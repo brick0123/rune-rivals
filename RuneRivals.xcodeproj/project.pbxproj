@@ -32,6 +32,7 @@
 		A762481269A612FA8573A365 /* KakaoSDKCommon in Frameworks */ = {isa = PBXBuildFile; productRef = CFB31D4214C14D8142FEF441 /* KakaoSDKCommon */; };
 		AF20A8887A136392C6C76E5A /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1191E6233B19ACADA12C0046 /* GameViewModel.swift */; };
 		B55E6C3050EC5006389355EF /* RNG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17BE16495CBFACC733E81B47 /* RNG.swift */; };
+		BBCF5E2529E4B2FF5E12DB2C /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED33C9B24A3F843EC072F56 /* ProfileView.swift */; };
 		BFA97B6CECC7D119BD70AED5 /* pop.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = EB2352FEC72D1E295FE384FB /* pop.mp3 */; };
 		C21CEE7E1D55B43E9AB66DA4 /* KakaoSDKUser in Frameworks */ = {isa = PBXBuildFile; productRef = D5396A9321B7D458CAACCFC8 /* KakaoSDKUser */; };
 		CEF234565B6F0642D60750EA /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C6F96486E018CC8C0F4CE0E /* GameView.swift */; };
@@ -57,6 +58,7 @@
 		40C958EEF7C627DB04630B0B /* Engine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Engine.swift; sourceTree = "<group>"; };
 		46CA8DB809D473AD22F7BF21 /* KakaoAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KakaoAuth.swift; sourceTree = "<group>"; };
 		4CF4C484EBACE59FC6862C20 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionBarView.swift; sourceTree = "<group>"; };
+		4ED33C9B24A3F843EC072F56 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		515A23DA2967280BB6FD32A3 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		560C418D0DDFEE6A2FDDD920 /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		5E1061F1AC6F7B34ABB1F4EA /* AI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AI.swift; sourceTree = "<group>"; };
@@ -174,6 +176,7 @@
 				560C418D0DDFEE6A2FDDD920 /* MenuView.swift */,
 				F0D2D24B1427B46FBB79ED05 /* OnlineLobbyView.swift */,
 				06061B2BE07A0276D79B8518 /* PlayerPanelView.swift */,
+				4ED33C9B24A3F843EC072F56 /* ProfileView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -295,6 +298,7 @@
 				86B3B968BC6D9E349B64BDA8 /* MenuView.swift in Sources */,
 				6695DF0A060B829EF03F60B5 /* OnlineLobbyView.swift in Sources */,
 				60FB221FDE65CDBB8BEC7939 /* PlayerPanelView.swift in Sources */,
+				BBCF5E2529E4B2FF5E12DB2C /* ProfileView.swift in Sources */,
 				B55E6C3050EC5006389355EF /* RNG.swift in Sources */,
 				6BDA1D90F9BFCBDB33C440D8 /* RelayClient.swift in Sources */,
 				4F4CED38B71C7CBED7023AA4 /* RelayConfig.swift in Sources */,

@@ -91,6 +91,18 @@ final class AccountManager {
         return .failure(resp["error"] as? String ?? "가입 실패")
     }
 
+    /// 닉네임 변경(카카오 재인증 토큰 필요). 성공 시 저장 갱신.
+    func rename(accessToken: String, nickname: String) async -> RegisterOutcome {
+        guard let resp = await post("/auth/rename", ["accessToken": accessToken, "nickname": nickname]) else {
+            return .failure("네트워크 오류")
+        }
+        if resp["ok"] as? Bool == true,
+           let id = resp["userId"] as? String, let n = resp["nickname"] as? String {
+            save(userId: id, nickname: n); return .success
+        }
+        return .failure(resp["error"] as? String ?? "변경 실패")
+    }
+
     private func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
         guard let url = URL(string: httpBase + path) else { return nil }
         var req = URLRequest(url: url); req.httpMethod = "POST"
