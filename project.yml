@@ -11,7 +11,7 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     TARGETED_DEVICE_FAMILY: "1,2"
 packages:
   # 카카오 로그인 SDK(네이티브). 로그인·사용자·공통 모듈만 사용.
@@ -49,6 +49,8 @@ targets:
         UILaunchScreen: {}
         # 표준 암호화(HTTPS)만 사용 → 수출 규정 면제. TestFlight 암호화 질문 스킵.
         ITSAppUsesNonExemptEncryption: false
+        # 가로 전용 게임 → iPad 멀티태스킹 미지원(전체화면)으로 선언해야 orientations 제한 허용됨.
+        UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
