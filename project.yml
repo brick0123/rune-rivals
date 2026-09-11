@@ -46,6 +46,9 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: 룬컬렉트
+        # 빌드/버전은 빌드설정 변수로 → release.sh 의 CURRENT_PROJECT_VERSION 오버라이드가 반영됨.
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
         UILaunchScreen: {}
         # 표준 암호화(HTTPS)만 사용 → 수출 규정 면제. TestFlight 암호화 질문 스킵.
         ITSAppUsesNonExemptEncryption: false
