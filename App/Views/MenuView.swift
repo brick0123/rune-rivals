@@ -160,7 +160,7 @@ struct MenuView: View {
     private var modeDesc: String {
         switch mode {
         case .single: return "혼자서 AI 2명과 대전"
-        case .casual: return "실시간 온라인 대전 — 방을 만들거나 참가"
+        case .casual: return "실시간 온라인 유저 빠른 대전"
         case .ranked: return "랭크전 — 준비 중"
         }
     }
