@@ -63,6 +63,19 @@ final class GameViewModel {
     var mySeat: Int { online?.mySeat ?? 0 }
     /// 예기치 않게 끊겨 자동 재접속 중(뷰에 "재접속 중…" 배너 표시).
     private(set) var reconnecting = false
+    /// 온라인: 좌석별 일반전 전적(상대 승률 표시용). 게임 시작 시 로드.
+    private(set) var seatStats: [Int: AccountManager.Stats] = [:]
+
+    /// 온라인 참가자 전적 로드(닉네임별 /me/stats).
+    func loadOnlineStats() {
+        guard isOnline else { return }
+        for (seat, name) in playerNames.enumerated() {
+            Task { [weak self] in
+                guard let s = await AccountManager.shared.fetchStats(for: name) else { return }
+                self?.seatStats[seat] = s
+            }
+        }
+    }
 
     init(mode: GameMode, numPlayers: Int, seed: UInt32) {
         self.mode = mode
@@ -97,6 +110,7 @@ final class GameViewModel {
             phase = .aiThinking             // 대기
             client.relay(["k": "ready"])    // 호스트에 현재 스냅샷 요청(첫 동기화, 레이스 방지)
         }
+        loadOnlineStats()                   // 참가자 전적(상대 승률) 로드
     }
 
     /// 같은 인원으로 새 게임 시작(새 랜덤 시드 → 새 턴 순서).

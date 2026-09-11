@@ -40,6 +40,7 @@
 		DB4DA7B268C93DBB70A00D0F /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CEFE8960196001CDF07D5C8 /* CardView.swift */; };
 		E5BEA1A3577EE353F1E4D979 /* KakaoSDKAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 816C3B64A8DBC6D1508D8874 /* KakaoSDKAuth */; };
 		EB1164AF67166DB03CD3C9F6 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A9226165465B9E6155A153D /* Cards.swift */; };
+		F076D1C079E6706E16A56370 /* HowToPlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4A17FB9C8F0EFB1806D54 /* HowToPlayView.swift */; };
 		F07C24419756F061C2F1D525 /* Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3637210F955984F9D4065E /* Actions.swift */; };
 		F4E738006A58CB902F1035E1 /* KakaoAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46CA8DB809D473AD22F7BF21 /* KakaoAuth.swift */; };
 /* End PBXBuildFile section */
@@ -69,6 +70,7 @@
 		86FCE6DD27114DF8DFFD269F /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
 		8A9226165465B9E6155A153D /* Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cards.swift; sourceTree = "<group>"; };
 		9123D2C10EC33C194EBEDE04 /* Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Types.swift; sourceTree = "<group>"; };
+		95C4A17FB9C8F0EFB1806D54 /* HowToPlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowToPlayView.swift; sourceTree = "<group>"; };
 		ACB76E23522A3A979028DA73 /* Weights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Weights.swift; sourceTree = "<group>"; };
 		AE4E65B035D71FBFE3B5C384 /* Balls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Balls.swift; sourceTree = "<group>"; };
 		C0F53CD412BAFA0A4A56B11A /* AccountManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountManager.swift; sourceTree = "<group>"; };
@@ -172,6 +174,7 @@
 				3CEFE8960196001CDF07D5C8 /* CardView.swift */,
 				6F59EA0D7395A73B96292DE3 /* GameOverView.swift */,
 				1C6F96486E018CC8C0F4CE0E /* GameView.swift */,
+				95C4A17FB9C8F0EFB1806D54 /* HowToPlayView.swift */,
 				11E011FB909B46B202B1DD23 /* LoginView.swift */,
 				560C418D0DDFEE6A2FDDD920 /* MenuView.swift */,
 				F0D2D24B1427B46FBB79ED05 /* OnlineLobbyView.swift */,
@@ -293,6 +296,7 @@
 				6D89710A598758054F0F2983 /* GameState.swift in Sources */,
 				CEF234565B6F0642D60750EA /* GameView.swift in Sources */,
 				AF20A8887A136392C6C76E5A /* GameViewModel.swift in Sources */,
+				F076D1C079E6706E16A56370 /* HowToPlayView.swift in Sources */,
 				F4E738006A58CB902F1035E1 /* KakaoAuth.swift in Sources */,
 				352AA4B7E9088974955C3030 /* LoginView.swift in Sources */,
 				86B3B968BC6D9E349B64BDA8 /* MenuView.swift in Sources */,

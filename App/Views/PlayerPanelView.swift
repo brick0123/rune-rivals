@@ -47,6 +47,16 @@ struct PlayerPanelView: View {
             Text(vm.playerNames[playerIdx])
                 .font(full ? .headline : .subheadline.weight(.bold))
                 .foregroundStyle(.white)
+                .lineLimit(1)
+            // 온라인: 전적/승률 배지(상대·나 공통). 전적 있을 때만.
+            if let st = vm.seatStats[playerIdx], st.games > 0 {
+                Text("\(st.wins)승 \(st.losses)패·\(Int(st.winRate.rounded()))%")
+                    .font(.system(size: full ? 10 : 9, weight: .bold))
+                    .foregroundStyle(.cyan)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(Theme.surfaceHi, in: Capsule())
+                    .fixedSize()
+            }
             Spacer()
             // 가장 먼저 시작한 플레이어 표시(별 왼쪽).
             if playerIdx == vm.state.startingPlayer {

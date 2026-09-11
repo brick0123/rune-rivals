@@ -8,6 +8,7 @@ struct MenuView: View {
     @State private var openLobby = false
     @State private var showLogin = false
     @State private var showProfile = false
+    @State private var showHowTo = false
     @State private var seed: UInt32 = 1
     @State private var account = AccountManager.shared
 
@@ -65,6 +66,16 @@ struct MenuView: View {
             }
             .sheet(isPresented: $showProfile) {
                 ProfileView(onClose: { showProfile = false })
+            }
+            .sheet(isPresented: $showHowTo) {
+                HowToPlayView(onClose: { showHowTo = false })
+            }
+            .onAppear {
+                // 첫 실행 시 게임 방법 자동 표시(한 번만).
+                if !UserDefaults.standard.bool(forKey: "seenHowToPlay") {
+                    UserDefaults.standard.set(true, forKey: "seenHowToPlay")
+                    showHowTo = true
+                }
             }
         }
     }
@@ -149,6 +160,15 @@ struct MenuView: View {
             }
             .disabled(!mode.isAvailable)
             .padding(.top, 12)   // 버튼을 살짝 아래로
+
+            Button { showHowTo = true } label: {
+                Label("게임 방법", systemImage: "questionmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.top, 4)
 
             Text("18점 도달 후 마지막 라운드까지 진행 · 동점 시 진화수 → 카드수")
                 .font(.caption)

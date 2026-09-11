@@ -93,10 +93,15 @@ final class AccountManager {
 
     struct Stats: Equatable { let games: Int; let wins: Int; let losses: Int; let winRate: Double }
 
-    /// 일반전 전적 조회(닉네임 기준, casual 만).
+    /// 일반전 전적 조회(내 닉네임).
     func fetchStats() async -> Stats? {
         guard let nick = nickname else { return nil }
-        let q = nick.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        return await fetchStats(for: nick)
+    }
+
+    /// 일반전 전적 조회(임의 닉네임 — 상대 승률 표시용).
+    func fetchStats(for name: String) async -> Stats? {
+        let q = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         guard let url = URL(string: "\(httpBase)/me/stats?name=\(q)") else { return nil }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
