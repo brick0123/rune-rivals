@@ -394,9 +394,9 @@ async function handleInstMsg(payload) {
   await bus.subscribeRoom(payload.code);
   send(ws, { t: "joined", code: payload.code, seat: payload.seat, isHost: payload.isHost, roster: payload.roster, token: payload.token, hostSeat: payload.hostSeat });
 }
-async function enqueue(ws, name) {
+async function enqueue(ws, name, preferGuest = false) {
   if (ws.meta.seat >= 0) return;
-  await store.enqueue({ instanceId: INSTANCE, connId: ws.meta.connId, name });
+  await store.enqueue({ instanceId: INSTANCE, connId: ws.meta.connId, name, preferGuest });
   send(ws, { t: "queued", size: await store.queueLen() });
   await tryMatch(MAX_SEATS, MAX_SEATS);                    // 3명 → 즉시
   if (!matchTimer && (await store.queueLen()) >= 2) {
@@ -406,6 +406,8 @@ async function enqueue(ws, name) {
 async function tryMatch(min, max) {
   const picked = await store.tryMatch(min, max);
   if (picked.length < 2) return;
+  // preferGuest(연습봇 등)는 항상 뒤 좌석으로 → 좌석0(호스트)는 실제 플레이어가 되도록. 안정 정렬.
+  picked.sort((a, b) => (a.preferGuest ? 1 : 0) - (b.preferGuest ? 1 : 0));
   const code = `m${INSTANCE.slice(0, 4)}${++codeSeq}`;
   await store.createRoom(code, { name: "매칭", hostSeat: 0 });
   await store.setStatus(code, "playing");
@@ -462,7 +464,7 @@ wss.on("connection", (ws) => {
             lobbySubs.add(ws);
             send(ws, { t: "rooms", rooms: (await store.listRooms()).map((x) => ({ code: x.code, name: x.name, players: x.players, max: MAX_SEATS, status: x.status, spectators: 0 })) });
             return;
-          case "queue": await enqueue(ws, String(msg.name ?? "플레이어").slice(0, 20)); return;
+          case "queue": await enqueue(ws, String(msg.name ?? "플레이어").slice(0, 20), !!msg.preferGuest); return;
           case "dequeue": await store.dequeue(ws.meta.connId); return;
           case "create": {
             const code = `r${INSTANCE.slice(0, 4)}${++codeSeq}`;
